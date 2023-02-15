@@ -8,4 +8,4 @@ default: esim
 	${CC} ${CFLAGS} -c $<
 
 esim: $(O_FILES)
-	$(CC) $(O_FILES) -o $@ 
+	$(CC) $(O_FILES) -o $@ -lyaml 
