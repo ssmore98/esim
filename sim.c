@@ -5,13 +5,18 @@
 #include <deque>
 #include <chrono>
 #include <random>
+#include <cassert>
+#include <cstring>
+#include <map>
+#include <yaml.h>
 
 // #define SERVICE_TIME 15
 // #define IA_TIME 20
-#define SIMULATION_TIME 100000000
 
 // random number generator
 std::default_random_engine generator(std::chrono::system_clock::now().time_since_epoch().count());
+
+class Server;
 
 class Task {
 	public:
@@ -34,6 +39,13 @@ std::ostream & operator<<(std::ostream & o, const TaskQ & taskq) {
 	o << std::endl;
 	return o;
 }
+
+class ClientTask: public Task {
+	public:
+		Server * const server;
+		ClientTask(const uint64_t & t, Server * const p_server): Task(t), server(p_server) {
+		}
+};
 
 typedef enum {EvTyNone, EvTyIssueTask, EvTyFinishTask} EventType;
 
@@ -101,6 +113,18 @@ class Server {
 			std::cout << "avServiceTime " << double(svc_sum) / double(n_tasks) << std::endl;
 			std::cout << "avQueueDepth " << double(qd_sum) / double(n_tasks) << std::endl;
 		}
+		void Queue(Events & events, const uint64_t & t, ClientTask * const task) {
+		}
+};
+
+typedef std::vector<Server *> Servers;
+
+class Client: public Server {
+	protected:
+		Servers controllers;
+	public:
+		Client(const unsigned int & service_time, Servers & p_controllers): Server(service_time), controllers(p_controllers) {
+		}
 };
 
 void IssueTask(Events & events, const uint64_t & t) {
@@ -109,47 +133,230 @@ void IssueTask(Events & events, const uint64_t & t) {
        	std::push_heap(events.begin(), events.end(), cmp);
 }
 
-void usage(const std::string & s) {
-       	fprintf(stderr, "Usage: %s [-q <queue depth>]\n", s.c_str());
-       	exit(EXIT_FAILURE);
+std::ostream & operator<<(std::ostream & o, const yaml_node_type_t  & node_type) {
+	switch (node_type) {
+	       	case YAML_NO_NODE:
+			o << "YAML_NO_NODE"; break;
+	       	case YAML_SCALAR_NODE:
+			o << "YAML_SCALAR_NODE"; break;
+	       	case YAML_SEQUENCE_NODE:
+			o << "YAML_SEQUENCE_NODE"; break;
+	       	case YAML_MAPPING_NODE:
+			o << "YAML_MAPPING_NODE"; break;
+		default:
+			throw node_type;
+	}
+	return o;
+}
+
+#if 0
+std::ostream & operator<<(std::ostream & o, const yaml_sequence_style_t & style) {
+	switch (style) {
+	       	case YAML_ANY_SEQUENCE_STYLE:
+			o << "YAML_ANY_SEQUENCE_STYLE"; break;
+	       	case YAML_BLOCK_SEQUENCE_STYLE:
+			o << "YAML_BLOCK_SEQUENCE_STYLE"; break;
+	       	case YAML_FLOW_SEQUENCE_STYLE:
+			o << "YAML_FLOW_SEQUENCE_STYLE"; break;
+		default:
+			throw style;
+	}
+	return o;
+}
+
+std::ostream & operator<<(std::ostream & o, const yaml_mapping_style_t & style) {
+	switch (style) {
+	       	case YAML_ANY_MAPPING_STYLE:
+			o << "YAML_ANY_MAPPING_STYLE"; break;
+	       	case YAML_BLOCK_MAPPING_STYLE:
+			o << "YAML_BLOCK_MAPPING_STYLE"; break;
+	       	case YAML_FLOW_MAPPING_STYLE:
+			o << "YAML_FLOW_MAPPING_STYLE"; break;
+		default:
+			throw style;
+	}
+	return o;
+}
+
+std::ostream & operator<<(std::ostream & o, const yaml_scalar_style_t & style) {
+	switch (style) {
+	       	case YAML_ANY_SCALAR_STYLE:
+			o << "YAML_ANY_SCALAR_STYLE"; break;
+	       	case YAML_PLAIN_SCALAR_STYLE:
+			o << "YAML_PLAIN_SCALAR_STYLE"; break;
+	       	case YAML_SINGLE_QUOTED_SCALAR_STYLE:
+			o << "YAML_SINGLE_QUOTED_SCALAR_STYLE"; break;
+	       	case YAML_DOUBLE_QUOTED_SCALAR_STYLE:
+			o << "YAML_DOUBLE_QUOTED_SCALAR_STYLE"; break;
+	       	case YAML_LITERAL_SCALAR_STYLE:
+			o << "YAML_LITERAL_SCALAR_STYLE"; break;
+	       	case YAML_FOLDED_SCALAR_STYLE:
+			o << "YAML_FOLDED_SCALAR_STYLE"; break;
+		default:
+			throw style;
+	}
+	return o;
+}
+
+std::ostream & operator<<(std::ostream & o, const yaml_mark_t & mark) {
+       	o << "index=" << mark.index << " line=" << mark.line << " column=" << mark.column;;
+	return o;
+}
+
+std::ostream & operator<<(std::ostream & o, const yaml_node_pair_t * const node) {
+	if (node) {
+	       	o << "key=" << node->key << " value=" << node->value;
+	}
+	return o;
+}
+
+std::ostream & operator<<(std::ostream & o, const yaml_node_t * const node) {
+	if (node) {
+	       	// o << node->start_mark << std::endl;
+	       	// o << node->type << std::endl;
+	       	switch (node->type) {
+		       	case YAML_SCALAR_NODE:
+			       	// o << node->data.scalar.style << std::endl;
+				// o << "value=" << node->data.scalar.value << " length=" <<  node->data.scalar.length; 
+				o << node->data.scalar.value;
+				break;
+		       	case YAML_MAPPING_NODE:
+			       	// o << node->data.mapping.style << std::endl;
+				{
+					for (int k = 0; k < (node->data.mapping.pairs.top - node->data.mapping.pairs.start); k++) {
+						{
+						       	const yaml_node_t * const c_node = yaml_document_get_node(&document, node->data.mapping.pairs.start[k].key);
+						       	o << "KEY " << c_node << std::endl;
+						}
+						{
+						       	const yaml_node_t * const c_node = yaml_document_get_node(&document, node->data.mapping.pairs.start[k].value);
+						       	o << "VALUE " << c_node << std::endl;
+						}
+					}
+				}
+			       	break;
+			case YAML_SEQUENCE_NODE:
+			       	// o << node->data.sequence.style << std::endl;
+				for (int k = 0; k < (node->data.sequence.items.top - node->data.sequence.items.start); k++) {
+				       	const yaml_node_t * const c_node = yaml_document_get_node(&document, node->data.sequence.items.start[k]);
+				       	// o << "SEQ " << c_node << std::endl;
+				       	o << c_node << " ";
+				}
+				break;
+		       	default:
+			       	throw node->type;
+		}
+	       	// o << node->end_mark << std::endl;
+	}
+	return o;
+}
+#endif
+
+typedef std::map<std::string, std::string> KeyVal;
+
+std::ostream & operator<<(std::ostream & o, const KeyVal & node) {
+	for (KeyVal::const_iterator i = node.begin(); i != node.end(); i++) {
+		o << i->first << " " << i->second << std::endl;
+	}
+	return o;
+}
+
+KeyVal parse(yaml_document_t & document, const yaml_node_t * const node) {
+	if (node) {
+		switch (node->type) {
+		       	case YAML_SCALAR_NODE:
+				{
+					KeyVal retval;
+				       	retval.insert(KeyVal::value_type(std::string((const char *)(node->data.scalar.value)), std::string("")));
+					return retval;
+				}
+				break;
+		       	case YAML_MAPPING_NODE:
+				{
+					KeyVal retval;
+					for (int k = 0; k < (node->data.mapping.pairs.top - node->data.mapping.pairs.start); k++) {
+					       	const yaml_node_t * const k_node = yaml_document_get_node(&document, node->data.mapping.pairs.start[k].key);
+						std::string key = parse(document, k_node).begin()->first;
+					       	const yaml_node_t * const v_node = yaml_document_get_node(&document, node->data.mapping.pairs.start[k].value);
+						std::string value = parse(document, v_node).begin()->first;
+					       	retval.insert(KeyVal::value_type(key, value));
+					}
+					return retval;
+				}
+			       	break;
+			case YAML_SEQUENCE_NODE:
+				break;
+		       	default:
+			       	throw node->type;
+		}
+	}
+	return KeyVal();
+}
+
+KeyVal parse(yaml_document_t & document) {
+       	yaml_node_t * const root = yaml_document_get_root_node(&document);
+	return parse(document, root);
 }
 
 int main(int argc, char **argv) {
+
+	FILE * const config_fp = fopen("config.yaml", "r");
+	assert(config_fp);
+	yaml_parser_t parser;
+	yaml_parser_initialize(&parser);
+	yaml_parser_set_input_file(&parser, config_fp);
+       	yaml_document_t document;
+	yaml_parser_load(&parser, &document);
+	const KeyVal config = parse(document);
+	yaml_document_delete(&document);
+	yaml_parser_delete(&parser);
+	fclose(config_fp);
 
 	int opt;
 	unsigned int qdepth = 0;
 	bool b2b = false;
 	unsigned int ia_time = 0;
 	unsigned int service_time = 0;
-	while ((opt = getopt(argc, argv, "q:i:s:")) != -1) {
-	       	switch (opt) {
-		       	case 'q':
-			       	b2b = true;
-			       	qdepth = atoi(optarg);
-			       	break;
-		       	case 'i':
-			       	b2b = false;
-			       	ia_time = atoi(optarg);
-			       	break;
-		       	case 's':
-			       	service_time = atoi(optarg);
-			       	break;
-		       	default: /* '?' */
-				usage(argv[0]);
+	uint64_t simulation_time = 0;
+	for (KeyVal::const_iterator i = config.begin(); i != config.end(); i++) {
+		if (!strcasecmp("queue_depth", i->first.c_str())) {
+		       	b2b = true;
+		       	qdepth = std::stoul(i->second);
+			continue;
 	       	}
-       	}
+		if (!strcasecmp("ia_time", i->first.c_str())) {
+		       	b2b = false;
+		       	ia_time = std::stoul(i->second);
+			continue;
+	       	}
+		if (!strcasecmp("service_time", i->first.c_str())) {
+		       	service_time = std::stoul(i->second);
+			continue;
+	       	}
+		if (!strcasecmp("simulation_time", i->first.c_str())) {
+		       	simulation_time = std::stoull(i->second);
+			continue;
+	       	}
+	}
 
 	if (b2b) {
 	       	if (1 > qdepth) {
-		       	usage(argv[0]);
+			std::cerr << "Queue depth should be greater than zero." << std::endl;
+			exit(1);
 	       	}
 	} else {
 	       	if (1 > ia_time) {
-		       	usage(argv[0]);
+			std::cerr << "Inter-arrival time should be greater than zero." << std::endl;
+			exit(1);
 	       	}
 	}
        	if (1 > service_time) {
-	       	usage(argv[0]);
+	       	std::cerr << "Service time should be greater than zero." << std::endl;
+	       	exit(1);
+       	}
+       	if (1 > simulation_time) {
+	       	std::cerr << "Simulation time should be greater than zero." << std::endl;
+	       	exit(1);
        	}
 
        	std::exponential_distribution<double> ia_time_distr(1.0 / (double)ia_time);
@@ -167,7 +374,7 @@ int main(int argc, char **argv) {
 	uint64_t last_task_time = 0;
 	uint64_t ia_time_sum = 0;
 	uint64_t ia_time_count = 0;
-	while (t < SIMULATION_TIME) {
+	while (t < simulation_time) {
 		if (0 == events.size()) {
 			break;
 		}
