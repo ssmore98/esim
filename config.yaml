@@ -1,0 +1,4 @@
+# queue_depth: 4
+ia_time: 10
+service_time: 5
+simulation_time: 100000
