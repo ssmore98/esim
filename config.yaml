@@ -1,4 +1,6 @@
-# queue_depth: 4
-ia_time: 10
-service_time: 5
+server:
+        service_time: 5
+generator:
+        queue_depth: 4
+        # ia_time: 10
 simulation_time: 100000
