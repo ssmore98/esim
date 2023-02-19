@@ -1,6 +1,10 @@
 server:
-        service_time: 5
+        name: alpha
 generator:
-        queue_depth: 4
-        # ia_time: 10
-simulation_time: 100000
+        name: one
+        # queue_depth: 1
+        server: alpha
+        iops: 44850
+        size: 65534
+        percent_read: 0
+simulation_time: 5000000

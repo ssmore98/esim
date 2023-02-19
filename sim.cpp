@@ -1,253 +1,13 @@
-#include <unistd.h>
-#include <iostream>
-#include <algorithm>
-#include <vector>
-#include <deque>
-#include <chrono>
-#include <random>
-#include <cassert>
-#include <cstring>
+#ifndef SIM_CPP
+#define SIM_CPP
+
 #include <map>
 #include <yaml.h>
 
-#define MAX_TASKQ 1024
-#define MAX_EVENTS 1024
-
-// random number generator
-
-class Server;
-class Generator;
-
-typedef enum {EvTyNone, EvTyStartTask, EvTyEndTask} EventType;
-
-class Event {
-	public:
-		const uint64_t t;
-		const EventType type;
-		Event(const uint64_t & p_t, const EventType & p_type): t(p_t), type(p_type) {
-		}
-		friend bool cmp(const Event * const, const Event * const);
-		virtual Server * const GetServer() const = 0;
-		virtual Generator * const GetGenerator() const = 0;
-		virtual ~Event() {
-		}
-};
-
-class Events: public std::vector<Event *> {
-	public:
-	       	void push_back(Event * const e) {
-			assert(MAX_EVENTS > std::vector<Event *>::size());
-		       	std::vector<Event *>::push_back(e);
-	       	}
-};
-
-class GeneratorEvent: public Event {
-	public:
-		Generator * const generator;
-		GeneratorEvent(const uint64_t & t, const EventType & type, Generator * const p_generator): Event(t, type), generator(p_generator) {
-		}
-		Generator * const GetGenerator() const {
-			return generator;
-		}
-		Server * const GetServer() const {
-			assert(0);
-			return NULL;
-		}
-};
-
-bool cmp(const Event * const e1, const Event * const e2)  { 
-	return e1->t > e2->t;
-}
-
-class Generator {
-	private:
-		static uint16_t index;
-	protected:
-		Events & events;
-	       	static std::default_random_engine generator;
-	       	uint64_t ia_time_sum;
-	       	uint64_t ia_time_count;
-	       	uint64_t last_task_time;
-	public:
-		Server * const server;
-		const uint16_t my_index;
-		Generator(Events & p_events, Server * const p_server): events(p_events), ia_time_sum(0), ia_time_count(0), last_task_time(0),
-       			server(p_server), my_index(index) {
-				index++;
-		}
-	       	void IssueTask(const uint64_t & t) {
-		       	GeneratorEvent * const e = new GeneratorEvent(t, EvTyStartTask, this);
-		       	events.push_back(e);
-		       	std::push_heap(events.begin(), events.end(), cmp);
-	       	}
-	       	virtual void StartTask(const uint64_t & t) = 0;
-	       	virtual void EndTask(const uint64_t & t) = 0;
-		virtual ~Generator() {
-			std::cout << "GENERATOR " << my_index << std::endl;
-			if (ia_time_count)
-			       	std::cout << "\tavIATime " << double(ia_time_sum) / double(ia_time_count) << std::endl;
-		}
-};
-
-class Task {
-	public:
-		const uint64_t t;
-		const size_t size;
-		Server * const server;
-		Generator * const generator;
-		Task(const uint64_t & p_t, const size_t & p_size, Server * const p_server, Generator * const p_generator):
-		       	t(p_t), size(p_size), server(p_server), generator(p_generator) {
-		}
-};
-
-typedef std::vector<Generator *> Generators;
-
-std::ostream & operator<<(std::ostream & o, const Task & io) {
-	o << io.t;
-	return o;
-}
-
-typedef std::deque<Task *> TaskQ;
-
-std::ostream & operator<<(std::ostream & o, const TaskQ & taskq) {
-	for (TaskQ::const_iterator i = taskq.begin(); i != taskq.end(); i++) {
-		o << (*i)->t << " ";
-	}
-	o << std::endl;
-	return o;
-}
-
-class ServerEvent: public Event {
-	public:
-		Server * const server;
-		ServerEvent(const uint64_t & t, const EventType & type, Server * const p_server): Event(t, type), server(p_server) {
-		}
-		Server * const GetServer() const {
-			return server;
-		}
-		Generator * const GetGenerator() const {
-			assert(0);
-			return NULL;
-		}
-};
-
-class Server {
-	private:
-		static uint16_t index;
-	protected:
-	       	static std::default_random_engine generator;
-		TaskQ taskq;
-		uint64_t n_tasks;
-		uint64_t task_time;
-		uint64_t qd_sum;
-		uint64_t svc_sum;
-		uint64_t GetServiceTime(Task * const task) {
-		       	const uint64_t retval = llround(service_time_distr(generator)) + (rate ? task->size / rate : 0);
-		       	svc_sum += retval;
-			return retval;
-		}
-	public:
-	       	std::exponential_distribution<double> service_time_distr;
-		const size_t rate;
-		const uint16_t my_index;
-		Server(const unsigned int & service_time, const size_t & p_rate): n_tasks(0), task_time(0), qd_sum(0), svc_sum(0),
-	       		service_time_distr(1.0 / (double)service_time), rate(p_rate), my_index(index)	{
-				index++;
-		}
-		void Queue(Events & events, const uint64_t & t, Task * const task) {
-			// std::cout << ">IO " << *io <<std::endl;
-			// std::cout << ">IOQ " << ioq;
-			assert(MAX_TASKQ > taskq.size());
-			taskq.push_back(task);
-			qd_sum += taskq.size();
-			if (1 == taskq.size()) {
-				const uint64_t service_time = GetServiceTime(task);
-			       	ServerEvent * const e = new ServerEvent(t + service_time, EvTyEndTask, this);
-			       	events.push_back(e);
-			       	std::push_heap(events.begin(), events.end(), cmp);
-			}
-			// std::cout << ">>IOQ " << ioq;
-		}
-		void UnQueue(Events & events, const uint64_t & t) {
-			if (1 > taskq.size()) throw taskq;
-			// std::cout << "<IOQ " << ioq;
-			Task * const task = taskq.front();
-			// std::cout << "IO start:" << task->t << " end:" << t << std::endl;
-			task_time += t - task->t;
-			n_tasks++;
-		       	task->generator->EndTask(t);
-			delete task;
-			taskq.pop_front();
-			// std::cout << "<<IOQ " << ioq;
-			if (0 < taskq.size()) {
-				const uint64_t service_time = GetServiceTime(task);
-			       	ServerEvent * const e = new ServerEvent(t + service_time, EvTyEndTask, this);
-			       	events.push_back(e);
-			       	std::push_heap(events.begin(), events.end(), cmp);
-			}
-		}
-		virtual ~Server() {
-			std::cout << "SERVER " << my_index << std::endl;
-			std::cout << "\tTasks " << n_tasks << std::endl;
-			if (n_tasks) {
-			       	std::cout << "\tavLatency " << double(task_time) / double(n_tasks) << std::endl;
-			       	std::cout << "\tavServiceTime " << double(svc_sum) / double(n_tasks) << std::endl;
-			       	std::cout << "\tavQueueDepth " << double(qd_sum) / double(n_tasks) << std::endl;
-			}
-		}
-};
-
-std::default_random_engine Server::generator(std::chrono::system_clock::now().time_since_epoch().count());
-
-uint16_t Server::index = 0;
-
-typedef std::vector<Server *> Servers;
-
-std::default_random_engine Generator::generator(std::chrono::system_clock::now().time_since_epoch().count());
-uint16_t Generator::index = 0;
-
-class RateGenerator : public Generator {
-	protected:
-	       	std::exponential_distribution<double> ia_time_distr;
-	public:
-		RateGenerator(Events & events, const unsigned int & ia_time, Server * const server): Generator(events, server),
-	       		ia_time_distr(1.0 / (double)ia_time) {
-			// std::cout << "CREATE RATE GENERATOR\n";
-			IssueTask(0);
-		}
-	       	void StartTask(const uint64_t & t) {
-		       	const uint64_t this_ia_time = llround(ia_time_distr(generator));
-		       	IssueTask(t + this_ia_time);
-		       	ia_time_sum += t - last_task_time;
-		       	ia_time_count++;
-		       	Task * const task = new Task(t, 0, server, this);
-		       	server->Queue(events, t, task);
-		       	last_task_time = t;
-		}
-	       	void EndTask(const uint64_t & t) {
-		}
-};
-
-class QueueGenerator : public Generator {
-	public:
-	       	const unsigned int qdepth;
-		QueueGenerator(Events & events, const unsigned int & p_qdepth, Server * const server): Generator(events, server), qdepth(p_qdepth) {
-			// std::cout << "CREATE QUEUE GENERATOR\n";
-			for (unsigned int i = 0; i < qdepth; i++) {
-			       	IssueTask(0);
-			}
-		}
-	       	void StartTask(const uint64_t & t) {
-		       	ia_time_sum += t - last_task_time;
-		       	ia_time_count++;
-		       	Task * const task = new Task(t, 0, server, this);
-		       	server->Queue(events, t, task);
-		       	last_task_time = t;
-		}
-	       	void EndTask(const uint64_t & t) {
-			StartTask(t);
-		}
-};
+#include "server.h"
+#include "event.h"
+#include "generator.h"
+#include "task.h"
 
 std::ostream & operator<<(std::ostream & o, const yaml_event_type_t  & e) {
 	switch (e) {
@@ -429,13 +189,12 @@ KeyVal parse(yaml_document_t & document) {
 	return parse(document, root);
 }
 
-Server * const ParseServer(yaml_parser_t & parser, Events & events) {
+Server * const ParseServer(yaml_parser_t & parser, Events & events, const uint64_t & t) {
 	yaml_event_t e;
 	std::string key;
 	std::string value;
+	std::string name = "server";
 	bool expect_key = false;
-	unsigned int service_time = 0;
-	size_t rate = 0;
 	uint16_t in_mapping = 0;
 	while (true) {
 		if (!yaml_parser_parse(&parser, &e)) {
@@ -451,12 +210,8 @@ Server * const ParseServer(yaml_parser_t & parser, Events & events) {
 				assert(in_mapping);
 				in_mapping--;
 				// std::cout << in_mapping << std::endl;
-			       	if (1 > service_time) {
-				       	std::cerr << "Service time should be greater than zero." << std::endl;
-				       	exit(1);
-			       	}
 			       	yaml_event_delete(&e);
-				return new Server(service_time, rate);
+				return new SSD_PM1733a(name, t);
 			case YAML_SCALAR_EVENT:
 				if (e.data.scalar.value) {
 				       	// std::cout << e.data.scalar.value << " " << e.data.scalar.style << std::endl;
@@ -468,10 +223,8 @@ Server * const ParseServer(yaml_parser_t & parser, Events & events) {
 						value = (char *)e.data.scalar.value;
 						// std::cout << "VALUE " << value <<std::endl;
 						expect_key = true;
-					       	if (!strcasecmp("service_time", key.c_str())) {
-						       	service_time = std::stoul(value);
-					       	} else if (!strcasecmp("rate", key.c_str())) {
-						       	rate = std::stoul(value);
+					       	if (!strcasecmp("name", key.c_str())) {
+						       	name = value;
 					       	} else {
 						       	assert(0);
 						}
@@ -486,15 +239,19 @@ Server * const ParseServer(yaml_parser_t & parser, Events & events) {
 	}
 }
 
-Generator * const ParseGenerator(yaml_parser_t & parser, Events & events, Server * const server) {
+Generator * const ParseGenerator(yaml_parser_t & parser, Events & events, Servers & servers) {
 	yaml_event_t e;
 	std::string key;
 	std::string value;
+	std::string name = "generator";
+	std::string server_name = "server";
 	bool expect_key = false;
 	unsigned int qdepth = 0;
 	bool b2b = false;
 	unsigned int ia_time = 0;
 	uint16_t in_mapping = 0;
+	uint16_t percent_read = 0;
+	size_t size = 0;
 	while (true) {
 		if (!yaml_parser_parse(&parser, &e)) {
 		       	assert(0);
@@ -522,11 +279,20 @@ Generator * const ParseGenerator(yaml_parser_t & parser, Events & events, Server
 						       	exit(1);
 					       	}
 				       	}
+					if (1 > size) {
+					       	std::cerr << "Size should be greater than zero." << std::endl;
+					       	exit(1);
+					}
 				       	yaml_event_delete(&e);
-				       	if (b2b) 
-						return new QueueGenerator(events, qdepth, server);
-				       	else 
-						return new RateGenerator(events, ia_time, server);
+					for (Servers::const_iterator server = servers.begin(); server != servers.end(); server++) {
+						if (!strcasecmp(server_name.c_str(), (*server)->name.c_str())) {
+						       	if (b2b) 
+								return new QueueGenerator(name, size, percent_read, events, qdepth, *server);
+						       	else 
+								return new RateGenerator(name, size, percent_read, events, ia_time, *server);
+						}
+					}
+					assert(0);
 			       	}
 				break;
 			case YAML_SCALAR_EVENT:
@@ -546,6 +312,17 @@ Generator * const ParseGenerator(yaml_parser_t & parser, Events & events, Server
 					       	} else if (!strcasecmp("ia_time", key.c_str())) {
 						       	b2b = false;
 						       	ia_time = std::stoul(value);
+					       	} else if (!strcasecmp("percent_read", key.c_str())) {
+						       	percent_read = std::stoul(value);
+					       	} else if (!strcasecmp("size", key.c_str())) {
+						       	size = std::stoul(value);
+					       	} else if (!strcasecmp("name", key.c_str())) {
+						       	name = value;
+					       	} else if (!strcasecmp("server", key.c_str())) {
+						       	server_name = value;
+					       	} else if (!strcasecmp("iops", key.c_str())) {
+						       	b2b = false;
+						       	ia_time = (unsigned int)(1000000.0 / std::stod(value));
 					       	} else {
 						       	assert(0);
 						}
@@ -562,6 +339,7 @@ Generator * const ParseGenerator(yaml_parser_t & parser, Events & events, Server
 
 int main(int argc, char **argv) {
 
+	uint64_t t = 0;
 	Events events;
 	Servers servers;
 	Generators generators;
@@ -585,10 +363,10 @@ int main(int argc, char **argv) {
 				if (e.data.scalar.value) {
 				       	// std::cout << e.data.scalar.value << " " << e.data.scalar.style << std::endl;
 				       	if (!strcasecmp("generator", (char *)e.data.scalar.value)) {
-						if (servers.size()) generators.push_back(ParseGenerator(parser, events, *(servers.begin())));
+						if (servers.size()) generators.push_back(ParseGenerator(parser, events, servers));
 						else        assert(0);
 				       	} else if (!strcasecmp("server", (char *)e.data.scalar.value)) {
-					       	servers.push_back(ParseServer(parser, events));
+					       	servers.push_back(ParseServer(parser, events, t));
 				       	} else if (expect_value) {
 						if (!strcasecmp("simulation_time", key.c_str())) {
 						       	simulation_time = std::stoull((char *)e.data.scalar.value);
@@ -625,7 +403,6 @@ int main(int argc, char **argv) {
 	       	exit(1);
        	}
 
-	uint64_t t = 0;
 	while (t < simulation_time) {
 		if (0 == events.size()) {
 			std::cout << "Empty event heap.\n";
@@ -657,3 +434,5 @@ int main(int argc, char **argv) {
 	}
 	return 0;
 }
+
+#endif // SIM_CPP
