@@ -560,4 +560,16 @@ task.o: /usr/include/x86_64-linux-gnu/c++/9/bits/ctype_inline.h
 task.o: /usr/include/c++/9/bits/locale_facets.tcc
 task.o: /usr/include/c++/9/bits/basic_ios.tcc
 task.o: /usr/include/c++/9/bits/ostream.tcc /usr/include/c++/9/istream
-task.o: /usr/include/c++/9/bits/istream.tcc
+task.o: /usr/include/c++/9/bits/istream.tcc server.h
+task.o: /usr/include/c++/9/random /usr/include/c++/9/bits/c++0x_warning.h
+task.o: event.h /usr/include/c++/9/cassert /usr/include/assert.h
+task.o: /usr/include/c++/9/algorithm /usr/include/c++/9/utility
+task.o: /usr/include/c++/9/bits/stl_relops.h
+task.o: /usr/include/c++/9/bits/stl_algo.h /usr/include/c++/9/cstdlib
+task.o: /usr/include/stdlib.h /usr/include/c++/9/bits/std_abs.h
+task.o: /usr/include/stdlib.h /usr/include/c++/9/bits/algorithmfwd.h
+task.o: /usr/include/c++/9/bits/stl_heap.h
+task.o: /usr/include/c++/9/bits/stl_tempbuf.h /usr/include/c++/9/vector
+task.o: /usr/include/c++/9/bits/stl_vector.h
+task.o: /usr/include/c++/9/bits/stl_bvector.h
+task.o: /usr/include/c++/9/bits/vector.tcc generator.h

@@ -19,6 +19,7 @@ class Server {
 		uint64_t svc_sum;
 		uint64_t sz_sum;
 		virtual uint64_t GetServiceTime(Task * const task) = 0;
+		virtual ServerEvent * const ScheduleTaskEnd(Task * const task, const uint64_t & t) = 0;
 	public:
 		const size_t rate;
 		const uint16_t my_index;
@@ -26,7 +27,8 @@ class Server {
 		Server(const std::string & p_name, const unsigned int & service_time, const size_t & p_rate);
 	       	virtual void Queue(Events & events, const uint64_t & t, Task * const task);
 	       	virtual void UnQueue(Events & events, const uint64_t & t);
-	       	virtual ~Server();
+	       	virtual void EndTask(Task * const task, const uint64_t & t) = 0;
+	       	virtual ~Server() = 0;
 };
 
 typedef std::vector<Server *> Servers;
@@ -40,6 +42,20 @@ class SSD_PM1733a: public Server {
 	public:
 	       	SSD_PM1733a(const std::string & name, const uint64_t & p_t);
 	       	virtual ~SSD_PM1733a();
+		virtual ServerEvent * const ScheduleTaskEnd(Task * const task, const uint64_t & t);
+	       	virtual void EndTask(Task * const task, const uint64_t & t);
 };
 
+class RAID_1: public Server {
+	protected:
+	       	std::uniform_int_distribution<uint16_t> select_server_distr;
+		virtual uint64_t GetServiceTime(Task * const task);
+	public:
+		Servers servers;
+		RAID_1(const std::string & name, Servers p_servers);
+	       	virtual void Queue(Events & events, const uint64_t & t, Task * const task);
+	       	virtual void UnQueue(Events & events, const uint64_t & t);
+		virtual ServerEvent * const ScheduleTaskEnd(Task * const task, const uint64_t & t);
+	       	virtual void EndTask(Task * const task, const uint64_t & t);
+};
 #endif // SERVER_H

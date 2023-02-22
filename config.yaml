@@ -1,10 +1,20 @@
 server:
-        name: alpha
-generator:
         name: one
-        # queue_depth: 1
-        server: alpha
-        iops: 44850
+        type: ssd_pm1733a
+server:
+        name: two
+        type: ssd_pm1733a
+server:
+        name: three
+        type: raid_1
+        servers: 
+          - one
+          - two
+generator:
+        name: gen
+        queue_depth: 1
+        server: three
+        # iops: 44850
         size: 65534
-        percent_read: 0
-simulation_time: 5000000
+        percent_read: 100
+simulation_time: 100000

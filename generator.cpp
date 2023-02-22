@@ -40,7 +40,7 @@ void RateGenerator::StartTask(const uint64_t & t) {
        	IssueTask(t + this_ia_time);
        	ia_time_sum += t - last_task_time;
        	ia_time_count++;
-       	Task * const task = (rw_type_distr(generator) < percent_read) ? (Task *)new ReadTask(t, size, server, this) : (Task *)new WriteTask(t, size, server, this);
+       	Task * const task =  new Task(t, size, (rw_type_distr(generator) < percent_read), server, this);
        	server->Queue(events, t, task);
        	last_task_time = t;
 }
@@ -58,7 +58,7 @@ QueueGenerator::QueueGenerator(const std::string & name, const size_t & size, co
 void QueueGenerator::StartTask(const uint64_t & t) {
        	ia_time_sum += t - last_task_time;
        	ia_time_count++;
-       	Task * const task = ((rw_type_distr(generator) < percent_read) ? (Task *)new ReadTask(t, size, server, this) : (Task *)new WriteTask(t, size, server, this));
+       	Task * const task =  new Task(t, size, (rw_type_distr(generator) < percent_read), server, this);
        	server->Queue(events, t, task);
        	last_task_time = t;
 }

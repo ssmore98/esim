@@ -189,11 +189,39 @@ KeyVal parse(yaml_document_t & document) {
 	return parse(document, root);
 }
 
-Server * const ParseServer(yaml_parser_t & parser, Events & events, const uint64_t & t) {
+std::vector<std::string> GetStrings(yaml_parser_t & parser) {
+	std::vector<std::string> retval;
+	yaml_event_t e;
+	while (true) {
+		if (!yaml_parser_parse(&parser, &e)) {
+		       	assert(0);
+	       	}
+	       	switch (e.type) {
+			case YAML_SCALAR_EVENT:
+				if (e.data.scalar.value) {
+						retval.push_back((char *)e.data.scalar.value);
+				}
+				break;
+			case YAML_SEQUENCE_END_EVENT:
+			       	yaml_event_delete(&e);
+				return retval;
+			default:
+			       	std::cout << e.type <<std::endl;
+			       	assert(0);
+		}
+		yaml_event_delete(&e);
+	}
+	assert(0);
+	return retval;
+}
+
+Server * const ParseServer(yaml_parser_t & parser, Events & events, const uint64_t & t, const Servers & servers) {
 	yaml_event_t e;
 	std::string key;
 	std::string value;
 	std::string name = "server";
+	std::string type = "server";
+	std::vector<std::string> server_names;
 	bool expect_key = false;
 	uint16_t in_mapping = 0;
 	while (true) {
@@ -211,7 +239,23 @@ Server * const ParseServer(yaml_parser_t & parser, Events & events, const uint64
 				in_mapping--;
 				// std::cout << in_mapping << std::endl;
 			       	yaml_event_delete(&e);
-				return new SSD_PM1733a(name, t);
+				if (!strcasecmp("SSD_PM1733a", type.c_str())) {
+				       	return new SSD_PM1733a(name, t);
+				}
+				if (!strcasecmp("RAID_1", type.c_str())) {
+					Servers raid_servers;
+					for (std::vector<std::string>::const_iterator i = server_names.begin(); i != server_names.end(); i++) {
+						// std::cout << *i << std::endl;
+						for (Servers::const_iterator j = servers.begin(); j != servers.end(); j++) {
+							if (!strcasecmp((*j)->name.c_str(), (*i).c_str())) {
+								raid_servers.push_back(*j);
+								break;
+							}
+						}
+					}
+				       	return new RAID_1(name, raid_servers);
+				}
+				assert(0);
 			case YAML_SCALAR_EVENT:
 				if (e.data.scalar.value) {
 				       	// std::cout << e.data.scalar.value << " " << e.data.scalar.style << std::endl;
@@ -225,12 +269,21 @@ Server * const ParseServer(yaml_parser_t & parser, Events & events, const uint64
 						expect_key = true;
 					       	if (!strcasecmp("name", key.c_str())) {
 						       	name = value;
+						} else if (!strcasecmp("type", key.c_str())) {
+						       	type = value;
 					       	} else {
 						       	assert(0);
 						}
 					}
 				}
 				break;		       	
+			case YAML_SEQUENCE_START_EVENT:
+			       	if (!strcasecmp("servers", key.c_str())) {
+					server_names = GetStrings(parser);
+				} else {
+				       	assert(0);
+				}
+				break;
 			default:
 			       	std::cout << e.type <<std::endl;
 			       	assert(0);
@@ -366,7 +419,7 @@ int main(int argc, char **argv) {
 						if (servers.size()) generators.push_back(ParseGenerator(parser, events, servers));
 						else        assert(0);
 				       	} else if (!strcasecmp("server", (char *)e.data.scalar.value)) {
-					       	servers.push_back(ParseServer(parser, events, t));
+					       	servers.push_back(ParseServer(parser, events, t, servers));
 				       	} else if (expect_value) {
 						if (!strcasecmp("simulation_time", key.c_str())) {
 						       	simulation_time = std::stoull((char *)e.data.scalar.value);

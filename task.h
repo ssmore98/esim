@@ -4,6 +4,8 @@
 #include <stdint.h>
 #include <deque>
 #include <iostream>
+#include <cassert>
+#include <vector>
 
 #define MAX_TASKQ 1024
 
@@ -16,8 +18,8 @@ class Task {
 		const size_t size;
 		Server * const server;
 		Generator * const generator;
-		Task(const uint64_t & p_t, const size_t & p_size, Server * const p_server, Generator * const p_generator);
-		virtual std::string Name() const = 0;
+		const bool is_read;
+		Task(const uint64_t & p_t, const size_t & p_size, const bool & pis_read, Server * const p_server, Generator * const p_generator);
 		virtual ~Task() {
 		}
 };
@@ -25,9 +27,11 @@ class Task {
 std::ostream & operator<<(std::ostream & o, Task * const io);
 
 typedef std::deque<Task *> TaskQ;
+typedef std::vector<Task *> Tasks;
 
 std::ostream & operator<<(std::ostream & o, const TaskQ & taskq);
 
+#if 0
 class ReadTask: public Task {
 	public:
 		ReadTask(const uint64_t & t, const size_t & size, Server * const server, Generator * const generator);
@@ -38,6 +42,26 @@ class WriteTask: public Task {
 	public:
 		WriteTask(const uint64_t & t, const size_t & size, Server * const server, Generator * const generator);
 	       	virtual std::string Name() const;
+};
+#endif
+
+class MasterTask;
+
+class SubTask: public Task {
+	protected:
+		MasterTask * mtask;
+	public:
+		SubTask(const uint64_t & t, const size_t & size, const bool & is_read, Server * const server, Generator * const generator);
+		MasterTask * & MTASK();
+};
+
+typedef std::vector<SubTask *> SubTasks;
+
+class MasterTask: public Task {
+	protected:
+		SubTasks tasks;
+	public:
+		MasterTask(SubTasks p_tasks);
 };
 
 #endif // TASK_H
