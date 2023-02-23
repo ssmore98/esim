@@ -7,10 +7,12 @@
 #include <cassert>
 #include <vector>
 
-#define MAX_TASKQ 1024
+#define MAX_TASKQ (64 * 1024)
 
 class Server;
 class Generator;
+
+class MasterTask;
 
 class Task {
 	public:
@@ -19,7 +21,10 @@ class Task {
 		Server * const server;
 		Generator * const generator;
 		const bool is_read;
-		Task(const uint64_t & p_t, const size_t & p_size, const bool & pis_read, Server * const p_server, Generator * const p_generator);
+		const bool is_random;
+		Task(const uint64_t & p_t, const size_t & p_size, const bool & pis_read, const bool & pis_random,
+			       	Server * const p_server, Generator * const p_generator);
+		virtual MasterTask * & MTASK();
 		virtual ~Task() {
 		}
 };
@@ -45,14 +50,13 @@ class WriteTask: public Task {
 };
 #endif
 
-class MasterTask;
-
 class SubTask: public Task {
 	protected:
 		MasterTask * mtask;
 	public:
-		SubTask(const uint64_t & t, const size_t & size, const bool & is_read, Server * const server, Generator * const generator);
-		MasterTask * & MTASK();
+		SubTask(const uint64_t & t, const size_t & size, const bool & is_read, const bool & is_random,
+			       	Server * const server, Generator * const generator);
+		virtual MasterTask * & MTASK();
 };
 
 typedef std::vector<SubTask *> SubTasks;
@@ -61,7 +65,10 @@ class MasterTask: public Task {
 	protected:
 		SubTasks tasks;
 	public:
-		MasterTask(SubTasks p_tasks);
+	       	MasterTask(const uint64_t & t, const size_t & size, const bool & is_read, const bool & is_random,
+			       	Server * const server, Generator * const generator, SubTasks p_tasks);
+		virtual MasterTask * & MTASK();
+	       	size_t EndTask(Task * const task, const uint64_t & t);
 };
 
 #endif // TASK_H

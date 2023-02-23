@@ -224,6 +224,7 @@ Server * const ParseServer(yaml_parser_t & parser, Events & events, const uint64
 	std::vector<std::string> server_names;
 	bool expect_key = false;
 	uint16_t in_mapping = 0;
+	size_t stripe_width = 64 * 1024;
 	while (true) {
 		if (!yaml_parser_parse(&parser, &e)) {
 		       	assert(0);
@@ -253,7 +254,20 @@ Server * const ParseServer(yaml_parser_t & parser, Events & events, const uint64
 							}
 						}
 					}
-				       	return new RAID_1(name, raid_servers);
+				       	return new RAID_1(name, raid_servers, t);
+				}
+				if (!strcasecmp("RAID_5", type.c_str())) {
+					Servers raid_servers;
+					for (std::vector<std::string>::const_iterator i = server_names.begin(); i != server_names.end(); i++) {
+						// std::cout << *i << std::endl;
+						for (Servers::const_iterator j = servers.begin(); j != servers.end(); j++) {
+							if (!strcasecmp((*j)->name.c_str(), (*i).c_str())) {
+								raid_servers.push_back(*j);
+								break;
+							}
+						}
+					}
+				       	return new RAID_5(name, raid_servers, stripe_width, t);
 				}
 				assert(0);
 			case YAML_SCALAR_EVENT:
@@ -271,6 +285,8 @@ Server * const ParseServer(yaml_parser_t & parser, Events & events, const uint64
 						       	name = value;
 						} else if (!strcasecmp("type", key.c_str())) {
 						       	type = value;
+						} else if (!strcasecmp("stripe_width", key.c_str())) {
+						       	stripe_width = std::stoul(value);
 					       	} else {
 						       	assert(0);
 						}
@@ -304,6 +320,7 @@ Generator * const ParseGenerator(yaml_parser_t & parser, Events & events, Server
 	unsigned int ia_time = 0;
 	uint16_t in_mapping = 0;
 	uint16_t percent_read = 0;
+	uint16_t percent_random = 0;
 	size_t size = 0;
 	while (true) {
 		if (!yaml_parser_parse(&parser, &e)) {
@@ -340,9 +357,9 @@ Generator * const ParseGenerator(yaml_parser_t & parser, Events & events, Server
 					for (Servers::const_iterator server = servers.begin(); server != servers.end(); server++) {
 						if (!strcasecmp(server_name.c_str(), (*server)->name.c_str())) {
 						       	if (b2b) 
-								return new QueueGenerator(name, size, percent_read, events, qdepth, *server);
+								return new QueueGenerator(name, size, percent_read, percent_random, events, qdepth, *server);
 						       	else 
-								return new RateGenerator(name, size, percent_read, events, ia_time, *server);
+								return new RateGenerator(name, size, percent_read, percent_random, events, ia_time, *server);
 						}
 					}
 					assert(0);
@@ -367,6 +384,8 @@ Generator * const ParseGenerator(yaml_parser_t & parser, Events & events, Server
 						       	ia_time = std::stoul(value);
 					       	} else if (!strcasecmp("percent_read", key.c_str())) {
 						       	percent_read = std::stoul(value);
+					       	} else if (!strcasecmp("percent_random", key.c_str())) {
+						       	percent_random = std::stoul(value);
 					       	} else if (!strcasecmp("size", key.c_str())) {
 						       	size = std::stoul(value);
 					       	} else if (!strcasecmp("name", key.c_str())) {

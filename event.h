@@ -6,7 +6,7 @@
 #include <algorithm>
 #include <vector>
 
-#define MAX_EVENTS 1024
+#define MAX_EVENTS (64 * 1024)
 
 class Server;
 class Generator;

@@ -1,20 +1,29 @@
 server:
-        name: one
+        name: ssd1
         type: ssd_pm1733a
 server:
-        name: two
+        name: ssd2
         type: ssd_pm1733a
 server:
-        name: three
-        type: raid_1
+        name: ssd3
+        type: ssd_pm1733a
+server:
+        name: ssd4
+        type: ssd_pm1733a
+server:
+        name: raid
+        type: raid_5
         servers: 
-          - one
-          - two
+          - ssd1
+          - ssd2
+          - ssd3
+          - ssd4
 generator:
-        name: gen
-        queue_depth: 1
-        server: three
-        # iops: 44850
+        name: gen1
+        queue_depth: 8192
+        server: raid
+        # iops: 75900
         size: 65534
-        percent_read: 100
+        percent_read: 0
+        percent_random: 0
 simulation_time: 100000

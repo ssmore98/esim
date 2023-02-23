@@ -1,5 +1,5 @@
 CC = g++ -std=c++11
-CFLAGS = -Wall -Werror -g -O2
+CFLAGS = -Wall -Werror -ggdb3 # -O2
 C_FILES = sim.cpp server.cpp event.cpp generator.cpp task.cpp
 O_FILES = $(C_FILES:.cpp=.o)
 DEFAULT_INCLUDES =  -I/usr/include/c++/9 -I/usr/include/x86_64-linux-gnu/c++/9 -I/usr/include/c++/9/backward \
@@ -11,10 +11,11 @@ default: esim
 	${CC} ${CFLAGS} -c $<
 
 esim: $(O_FILES)
-	$(CC) $(O_FILES) -o $@ -lyaml 
+	$(CC) $(O_FILES) -ggdb3 -o $@ -lyaml 
 
 depend: Makefile $(C_FILES)
 	makedepend $(DEFAULT_INCLUDES) $(C_FILES)
+	sudo apt install `find-dbgsym-packages esim` -y
 
 clean:
 	\rm -f $(O_FILES)
@@ -151,17 +152,18 @@ sim.o: /usr/include/x86_64-linux-gnu/c++/9/bits/ctype_inline.h
 sim.o: /usr/include/c++/9/bits/locale_facets.tcc
 sim.o: /usr/include/c++/9/bits/basic_ios.tcc
 sim.o: /usr/include/c++/9/bits/ostream.tcc /usr/include/c++/9/istream
-sim.o: /usr/include/c++/9/bits/istream.tcc event.h /usr/include/c++/9/cassert
-sim.o: /usr/include/assert.h /usr/include/c++/9/algorithm
-sim.o: /usr/include/c++/9/utility /usr/include/c++/9/bits/stl_relops.h
+sim.o: /usr/include/c++/9/bits/istream.tcc /usr/include/c++/9/cassert
+sim.o: /usr/include/assert.h /usr/include/c++/9/vector
+sim.o: /usr/include/c++/9/bits/stl_vector.h
+sim.o: /usr/include/c++/9/bits/stl_bvector.h
+sim.o: /usr/include/c++/9/bits/vector.tcc event.h
+sim.o: /usr/include/c++/9/algorithm /usr/include/c++/9/utility
+sim.o: /usr/include/c++/9/bits/stl_relops.h
 sim.o: /usr/include/c++/9/bits/stl_algo.h /usr/include/c++/9/cstdlib
 sim.o: /usr/include/stdlib.h /usr/include/c++/9/bits/std_abs.h
 sim.o: /usr/include/stdlib.h /usr/include/c++/9/bits/algorithmfwd.h
 sim.o: /usr/include/c++/9/bits/stl_heap.h
-sim.o: /usr/include/c++/9/bits/stl_tempbuf.h /usr/include/c++/9/vector
-sim.o: /usr/include/c++/9/bits/stl_vector.h
-sim.o: /usr/include/c++/9/bits/stl_bvector.h
-sim.o: /usr/include/c++/9/bits/vector.tcc generator.h
+sim.o: /usr/include/c++/9/bits/stl_tempbuf.h generator.h
 server.o: /usr/include/c++/9/chrono /usr/include/c++/9/bits/c++0x_warning.h
 server.o: /usr/include/c++/9/iostream
 server.o: /usr/include/x86_64-linux-gnu/c++/9/bits/c++config.h
@@ -273,18 +275,18 @@ server.o: /usr/include/c++/9/random task.h /usr/include/c++/9/deque
 server.o: /usr/include/c++/9/bits/stl_construct.h
 server.o: /usr/include/c++/9/bits/stl_uninitialized.h
 server.o: /usr/include/c++/9/bits/stl_deque.h
-server.o: /usr/include/c++/9/bits/deque.tcc event.h
-server.o: /usr/include/c++/9/cassert /usr/include/assert.h
+server.o: /usr/include/c++/9/bits/deque.tcc /usr/include/c++/9/cassert
+server.o: /usr/include/assert.h /usr/include/c++/9/vector
+server.o: /usr/include/c++/9/bits/stl_vector.h
+server.o: /usr/include/c++/9/bits/stl_bvector.h
+server.o: /usr/include/c++/9/bits/vector.tcc event.h
 server.o: /usr/include/c++/9/algorithm /usr/include/c++/9/utility
 server.o: /usr/include/c++/9/bits/stl_relops.h
 server.o: /usr/include/c++/9/bits/stl_algo.h /usr/include/c++/9/cstdlib
 server.o: /usr/include/stdlib.h /usr/include/c++/9/bits/std_abs.h
 server.o: /usr/include/stdlib.h /usr/include/c++/9/bits/algorithmfwd.h
 server.o: /usr/include/c++/9/bits/stl_heap.h
-server.o: /usr/include/c++/9/bits/stl_tempbuf.h /usr/include/c++/9/vector
-server.o: /usr/include/c++/9/bits/stl_vector.h
-server.o: /usr/include/c++/9/bits/stl_bvector.h
-server.o: /usr/include/c++/9/bits/vector.tcc generator.h
+server.o: /usr/include/c++/9/bits/stl_tempbuf.h generator.h
 event.o: event.h /usr/lib/gcc/x86_64-linux-gnu/9/include/stdint.h
 event.o: /usr/lib/gcc/x86_64-linux-gnu/9/include/stdint-gcc.h
 event.o: /usr/include/c++/9/cassert
@@ -443,18 +445,18 @@ generator.o: /usr/include/c++/9/random task.h /usr/include/c++/9/deque
 generator.o: /usr/include/c++/9/bits/stl_construct.h
 generator.o: /usr/include/c++/9/bits/stl_uninitialized.h
 generator.o: /usr/include/c++/9/bits/stl_deque.h
-generator.o: /usr/include/c++/9/bits/deque.tcc event.h
-generator.o: /usr/include/c++/9/cassert /usr/include/assert.h
+generator.o: /usr/include/c++/9/bits/deque.tcc /usr/include/c++/9/cassert
+generator.o: /usr/include/assert.h /usr/include/c++/9/vector
+generator.o: /usr/include/c++/9/bits/stl_vector.h
+generator.o: /usr/include/c++/9/bits/stl_bvector.h
+generator.o: /usr/include/c++/9/bits/vector.tcc event.h
 generator.o: /usr/include/c++/9/algorithm /usr/include/c++/9/utility
 generator.o: /usr/include/c++/9/bits/stl_relops.h
 generator.o: /usr/include/c++/9/bits/stl_algo.h /usr/include/c++/9/cstdlib
 generator.o: /usr/include/stdlib.h /usr/include/c++/9/bits/std_abs.h
 generator.o: /usr/include/stdlib.h /usr/include/c++/9/bits/algorithmfwd.h
 generator.o: /usr/include/c++/9/bits/stl_heap.h
-generator.o: /usr/include/c++/9/bits/stl_tempbuf.h /usr/include/c++/9/vector
-generator.o: /usr/include/c++/9/bits/stl_vector.h
-generator.o: /usr/include/c++/9/bits/stl_bvector.h
-generator.o: /usr/include/c++/9/bits/vector.tcc generator.h
+generator.o: /usr/include/c++/9/bits/stl_tempbuf.h generator.h
 task.o: task.h /usr/lib/gcc/x86_64-linux-gnu/9/include/stdint.h
 task.o: /usr/lib/gcc/x86_64-linux-gnu/9/include/stdint-gcc.h
 task.o: /usr/include/c++/9/deque /usr/include/c++/9/bits/stl_algobase.h
@@ -560,16 +562,16 @@ task.o: /usr/include/x86_64-linux-gnu/c++/9/bits/ctype_inline.h
 task.o: /usr/include/c++/9/bits/locale_facets.tcc
 task.o: /usr/include/c++/9/bits/basic_ios.tcc
 task.o: /usr/include/c++/9/bits/ostream.tcc /usr/include/c++/9/istream
-task.o: /usr/include/c++/9/bits/istream.tcc server.h
-task.o: /usr/include/c++/9/random /usr/include/c++/9/bits/c++0x_warning.h
-task.o: event.h /usr/include/c++/9/cassert /usr/include/assert.h
+task.o: /usr/include/c++/9/bits/istream.tcc /usr/include/c++/9/cassert
+task.o: /usr/include/assert.h /usr/include/c++/9/vector
+task.o: /usr/include/c++/9/bits/stl_vector.h
+task.o: /usr/include/c++/9/bits/stl_bvector.h
+task.o: /usr/include/c++/9/bits/vector.tcc server.h /usr/include/c++/9/random
+task.o: /usr/include/c++/9/bits/c++0x_warning.h event.h
 task.o: /usr/include/c++/9/algorithm /usr/include/c++/9/utility
 task.o: /usr/include/c++/9/bits/stl_relops.h
 task.o: /usr/include/c++/9/bits/stl_algo.h /usr/include/c++/9/cstdlib
 task.o: /usr/include/stdlib.h /usr/include/c++/9/bits/std_abs.h
 task.o: /usr/include/stdlib.h /usr/include/c++/9/bits/algorithmfwd.h
 task.o: /usr/include/c++/9/bits/stl_heap.h
-task.o: /usr/include/c++/9/bits/stl_tempbuf.h /usr/include/c++/9/vector
-task.o: /usr/include/c++/9/bits/stl_vector.h
-task.o: /usr/include/c++/9/bits/stl_bvector.h
-task.o: /usr/include/c++/9/bits/vector.tcc generator.h
+task.o: /usr/include/c++/9/bits/stl_tempbuf.h generator.h
