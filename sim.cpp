@@ -225,6 +225,7 @@ Server * const ParseServer(yaml_parser_t & parser, Events & events, const uint64
 	bool expect_key = false;
 	uint16_t in_mapping = 0;
 	size_t stripe_width = 64 * 1024;
+	// size_t n_parity_servers = 1;
 	while (true) {
 		if (!yaml_parser_parse(&parser, &e)) {
 		       	assert(0);
@@ -242,6 +243,19 @@ Server * const ParseServer(yaml_parser_t & parser, Events & events, const uint64
 			       	yaml_event_delete(&e);
 				if (!strcasecmp("SSD_PM1733a", type.c_str())) {
 				       	return new SSD_PM1733a(name, t);
+				}
+				if (!strcasecmp("RAID_0", type.c_str())) {
+					Servers raid_servers;
+					for (std::vector<std::string>::const_iterator i = server_names.begin(); i != server_names.end(); i++) {
+						// std::cout << *i << std::endl;
+						for (Servers::const_iterator j = servers.begin(); j != servers.end(); j++) {
+							if (!strcasecmp((*j)->name.c_str(), (*i).c_str())) {
+								raid_servers.push_back(*j);
+								break;
+							}
+						}
+					}
+				       	return new RAID_0(name, raid_servers, stripe_width, t);
 				}
 				if (!strcasecmp("RAID_1", type.c_str())) {
 					Servers raid_servers;
@@ -269,6 +283,56 @@ Server * const ParseServer(yaml_parser_t & parser, Events & events, const uint64
 					}
 				       	return new RAID_5(name, raid_servers, stripe_width, t);
 				}
+#if 0
+				if (!strcasecmp("RAID_4", type.c_str())) {
+					Servers raid_servers;
+					for (std::vector<std::string>::const_iterator i = server_names.begin(); i != server_names.end(); i++) {
+						// std::cout << *i << std::endl;
+						for (Servers::const_iterator j = servers.begin(); j != servers.end(); j++) {
+							if (!strcasecmp((*j)->name.c_str(), (*i).c_str())) {
+								raid_servers.push_back(*j);
+								break;
+							}
+						}
+					}
+					Servers data_servers;
+					Servers parity_servers;
+					size_t count = 0;
+					for (Servers::iterator i = raid_servers.begin(); i != raid_servers.end(); i++) {
+						if (count < n_parity_servers) {
+						       	parity_servers.push_back(*i);
+						} else {
+						       	data_servers.push_back(*i);
+						}
+						count++;
+					}
+				       	return new RAID_4(name, data_servers, parity_servers, stripe_width, t);
+				}
+				if (!strcasecmp("RAID_DP", type.c_str())) {
+					Servers raid_servers;
+					for (std::vector<std::string>::const_iterator i = server_names.begin(); i != server_names.end(); i++) {
+						// std::cout << *i << std::endl;
+						for (Servers::const_iterator j = servers.begin(); j != servers.end(); j++) {
+							if (!strcasecmp((*j)->name.c_str(), (*i).c_str())) {
+								raid_servers.push_back(*j);
+								break;
+							}
+						}
+					}
+					Servers data_servers;
+					Servers parity_servers;
+					size_t count = 0;
+					for (Servers::iterator i = raid_servers.begin(); i != raid_servers.end(); i++) {
+						if (count < 2) {
+						       	parity_servers.push_back(*i);
+						} else {
+						       	data_servers.push_back(*i);
+						}
+						count++;
+					}
+				       	return new RAID_DP(name, data_servers, *(parity_servers.begin()), *(parity_servers.rbegin()), stripe_width, t);
+				}
+#endif
 				assert(0);
 			case YAML_SCALAR_EVENT:
 				if (e.data.scalar.value) {
@@ -287,6 +351,8 @@ Server * const ParseServer(yaml_parser_t & parser, Events & events, const uint64
 						       	type = value;
 						} else if (!strcasecmp("stripe_width", key.c_str())) {
 						       	stripe_width = std::stoul(value);
+						} else if (!strcasecmp("parity_servers", key.c_str())) {
+						       	// n_parity_servers = std::stoul(value);
 					       	} else {
 						       	assert(0);
 						}
@@ -299,6 +365,7 @@ Server * const ParseServer(yaml_parser_t & parser, Events & events, const uint64
 				} else {
 				       	assert(0);
 				}
+			       	expect_key = true;
 				break;
 			default:
 			       	std::cout << e.type <<std::endl;

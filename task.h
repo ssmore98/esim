@@ -1,7 +1,7 @@
 #ifndef TASK_H
 #define TASK_H
 
-#include <stdint.h>
+#include <cstdint>
 #include <deque>
 #include <iostream>
 #include <cassert>
@@ -36,20 +36,6 @@ typedef std::vector<Task *> Tasks;
 
 std::ostream & operator<<(std::ostream & o, const TaskQ & taskq);
 
-#if 0
-class ReadTask: public Task {
-	public:
-		ReadTask(const uint64_t & t, const size_t & size, Server * const server, Generator * const generator);
-	       	virtual std::string Name() const;
-};
-
-class WriteTask: public Task {
-	public:
-		WriteTask(const uint64_t & t, const size_t & size, Server * const server, Generator * const generator);
-	       	virtual std::string Name() const;
-};
-#endif
-
 class SubTask: public Task {
 	protected:
 		MasterTask * mtask;
@@ -59,14 +45,12 @@ class SubTask: public Task {
 		virtual MasterTask * & MTASK();
 };
 
-typedef std::vector<SubTask *> SubTasks;
-
 class MasterTask: public Task {
 	protected:
-		SubTasks tasks;
+		Tasks tasks;
 	public:
 	       	MasterTask(const uint64_t & t, const size_t & size, const bool & is_read, const bool & is_random,
-			       	Server * const server, Generator * const generator, SubTasks p_tasks);
+			       	Server * const server, Generator * const generator, Tasks p_tasks);
 		virtual MasterTask * & MTASK();
 	       	size_t EndTask(Task * const task, const uint64_t & t);
 };

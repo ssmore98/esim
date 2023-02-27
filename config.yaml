@@ -20,10 +20,10 @@ server:
           - ssd4
 generator:
         name: gen1
-        queue_depth: 8192
+        queue_depth: 16
         server: raid
         # iops: 75900
-        size: 65534
-        percent_read: 0
+        size: 262144
+        percent_read: 100
         percent_random: 0
 simulation_time: 100000

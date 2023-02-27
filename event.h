@@ -1,7 +1,7 @@
 #ifndef EVENT_H
 #define EVENT_H
 
-#include <stdint.h>
+#include <cstdint>
 #include <cassert>
 #include <algorithm>
 #include <vector>

@@ -47,8 +47,8 @@ MasterTask * & SubTask::MTASK() {
 }
 
 MasterTask::MasterTask(const uint64_t & t, const size_t & size, const bool & is_read, const bool & is_random, Server * const server,
-	       	Generator * const generator, SubTasks p_tasks): Task(t, size, is_read, is_random, server, generator), tasks(p_tasks) {
-	for (SubTasks::iterator i = tasks.begin(); i != tasks.end(); i++) {
+	       	Generator * const generator, Tasks p_tasks): Task(t, size, is_read, is_random, server, generator), tasks(p_tasks) {
+	for (Tasks::iterator i = tasks.begin(); i != tasks.end(); i++) {
 		assert(!(*i)->MTASK());
 		(*i)->MTASK() = this;
 	}
@@ -59,7 +59,7 @@ MasterTask * & MasterTask::MTASK() {
 }
 
 size_t MasterTask::EndTask(Task * const task, const uint64_t & t) {
-	SubTasks::iterator i = std::find(tasks.begin(), tasks.end(), task);
+	Tasks::iterator i = std::find(tasks.begin(), tasks.end(), task);
 	if (i != tasks.end()) {
 		tasks.erase(i);
 		return tasks.size();

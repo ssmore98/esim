@@ -1,7 +1,9 @@
 #ifndef SERVER_H
 #define SERVER_H
 
-#include <stdint.h>
+// https://confluence.ngage.netapp.com/display/PALM/Discrete+Event+Simulator#DiscreteEventSimulator-Server
+
+#include <cstdint>
 #include <random>
 
 #include "task.h"
@@ -24,7 +26,7 @@ class Server {
 		const uint16_t my_index;
 		const std::string name;
 		Server(const std::string & p_name, const unsigned int & service_time);
-	       	virtual void Queue(Events & events, const uint64_t & t, Task * const task);
+	       	virtual Task * const Queue(Events & events, const uint64_t & t, Task * const task);
 	       	virtual void UnQueue(Events & events, const uint64_t & t);
 	       	virtual void EndTask(Task * const task, const uint64_t & t) = 0;
 	       	virtual ~Server() = 0;
@@ -45,6 +47,26 @@ class SSD_PM1733a: public Server {
 	       	virtual void EndTask(Task * const task, const uint64_t & t);
 };
 
+class RAID_0: public Server {
+	protected:
+	       	size_t alignment;
+	       	size_t space_left_in_stripe;
+	       	Servers::iterator next_server;
+	       	std::uniform_int_distribution<uint16_t> select_server_distr;
+	       	std::uniform_int_distribution<uint16_t> alignment_distr;
+		virtual uint64_t GetServiceTime(Task * const task);
+		const uint64_t & current_time;
+		Servers servers;
+	public:
+		const size_t stripe_width;
+		RAID_0(const std::string & name, Servers & p_servers, const size_t & p_stripe_width, const uint64_t & t);
+	       	virtual Task * const Queue(Events & events, const uint64_t & t, Task * const task);
+	       	virtual void UnQueue(Events & events, const uint64_t & t);
+		virtual ServerEvent * const ScheduleTaskEnd(Task * const task, const uint64_t & t);
+	       	virtual void EndTask(Task * const task, const uint64_t & t);
+	       	virtual ~RAID_0();
+};
+
 class RAID_1: public Server {
 	protected:
 	       	std::uniform_int_distribution<uint16_t> select_server_distr;
@@ -52,29 +74,52 @@ class RAID_1: public Server {
 		const uint64_t & current_time;
 	public:
 		Servers servers;
-		RAID_1(const std::string & name, Servers p_servers, const uint64_t & t);
-	       	virtual void Queue(Events & events, const uint64_t & t, Task * const task);
+		RAID_1(const std::string & name, Servers & p_servers, const uint64_t & t);
+	       	virtual Task * const  Queue(Events & events, const uint64_t & t, Task * const task);
 	       	virtual void UnQueue(Events & events, const uint64_t & t);
 		virtual ServerEvent * const ScheduleTaskEnd(Task * const task, const uint64_t & t);
 	       	virtual void EndTask(Task * const task, const uint64_t & t);
 	       	virtual ~RAID_1();
 };
 
-class RAID_5: public Server {
+class RAID_5: public RAID_0 {
+	protected:
+	       	Servers::iterator parity;
+		virtual uint64_t GetServiceTime(Task * const task);
+	       	void AdvanceParity();
+	       	bool AdvanceServer();
+	public:
+		RAID_5(const std::string & name, Servers & p_servers, const size_t & p_stripe_width, const uint64_t & t);
+	       	virtual Task * const Queue(Events & events, const uint64_t & t, Task * const task);
+	       	virtual void UnQueue(Events & events, const uint64_t & t);
+		virtual ServerEvent * const ScheduleTaskEnd(Task * const task, const uint64_t & t);
+	       	virtual void EndTask(Task * const task, const uint64_t & t);
+	       	virtual ~RAID_5();
+};
+
+#if 0
+class RAID_4: public Server {
 	protected:
 	       	std::uniform_int_distribution<uint16_t> select_server_distr;
 		virtual uint64_t GetServiceTime(Task * const task);
 		const uint64_t & current_time;
 		size_t current_stripe_fill;
 	public:
-		Servers servers;
+		Servers data_servers, parity_servers;
 		const size_t stripe_width;
-		RAID_5(const std::string & name, Servers p_servers, const size_t & p_stripe_width, const uint64_t & t);
+		RAID_4(const std::string & name, Servers & p_data_servers, Servers & p_parity_servers, const size_t & p_stripe_width, const uint64_t & t);
 	       	virtual void Queue(Events & events, const uint64_t & t, Task * const task);
 	       	virtual void UnQueue(Events & events, const uint64_t & t);
 		virtual ServerEvent * const ScheduleTaskEnd(Task * const task, const uint64_t & t);
 	       	virtual void EndTask(Task * const task, const uint64_t & t);
-	       	virtual ~RAID_5();
+	       	virtual ~RAID_4();
 };
+
+class RAID_DP: public RAID_4 {
+	public:
+		RAID_DP(const std::string & name, Servers & data_servers, Server & parity_servers, const size_t & p_stripe_width, const uint64_t & t);
+	       	virtual ~RAID_DP();
+};
+#endif
 
 #endif // SERVER_H

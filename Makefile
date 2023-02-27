@@ -101,10 +101,8 @@ sim.o: /usr/include/x86_64-linux-gnu/bits/stdio_lim.h
 sim.o: /usr/include/x86_64-linux-gnu/bits/sys_errlist.h /usr/include/string.h
 sim.o: /usr/include/x86_64-linux-gnu/bits/types/locale_t.h
 sim.o: /usr/include/x86_64-linux-gnu/bits/types/__locale_t.h
-sim.o: /usr/include/strings.h server.h
-sim.o: /usr/lib/gcc/x86_64-linux-gnu/9/include/stdint.h
-sim.o: /usr/lib/gcc/x86_64-linux-gnu/9/include/stdint-gcc.h
-sim.o: /usr/include/c++/9/random /usr/include/c++/9/bits/c++0x_warning.h
+sim.o: /usr/include/strings.h server.h /usr/include/c++/9/cstdint
+sim.o: /usr/include/c++/9/bits/c++0x_warning.h /usr/include/c++/9/random
 sim.o: task.h /usr/include/c++/9/deque
 sim.o: /usr/include/c++/9/bits/stl_construct.h
 sim.o: /usr/include/c++/9/bits/stl_uninitialized.h
@@ -269,10 +267,8 @@ server.o: /usr/include/c++/9/bits/locale_facets.tcc
 server.o: /usr/include/c++/9/bits/basic_ios.tcc
 server.o: /usr/include/c++/9/bits/ostream.tcc /usr/include/c++/9/istream
 server.o: /usr/include/c++/9/bits/istream.tcc server.h
-server.o: /usr/lib/gcc/x86_64-linux-gnu/9/include/stdint.h
-server.o: /usr/lib/gcc/x86_64-linux-gnu/9/include/stdint-gcc.h
-server.o: /usr/include/c++/9/random task.h /usr/include/c++/9/deque
-server.o: /usr/include/c++/9/bits/stl_construct.h
+server.o: /usr/include/c++/9/cstdint /usr/include/c++/9/random task.h
+server.o: /usr/include/c++/9/deque /usr/include/c++/9/bits/stl_construct.h
 server.o: /usr/include/c++/9/bits/stl_uninitialized.h
 server.o: /usr/include/c++/9/bits/stl_deque.h
 server.o: /usr/include/c++/9/bits/deque.tcc /usr/include/c++/9/cassert
@@ -287,9 +283,8 @@ server.o: /usr/include/stdlib.h /usr/include/c++/9/bits/std_abs.h
 server.o: /usr/include/stdlib.h /usr/include/c++/9/bits/algorithmfwd.h
 server.o: /usr/include/c++/9/bits/stl_heap.h
 server.o: /usr/include/c++/9/bits/stl_tempbuf.h generator.h
-event.o: event.h /usr/lib/gcc/x86_64-linux-gnu/9/include/stdint.h
-event.o: /usr/lib/gcc/x86_64-linux-gnu/9/include/stdint-gcc.h
-event.o: /usr/include/c++/9/cassert
+event.o: event.h /usr/include/c++/9/cstdint
+event.o: /usr/include/c++/9/bits/c++0x_warning.h /usr/include/c++/9/cassert
 event.o: /usr/include/x86_64-linux-gnu/c++/9/bits/c++config.h
 event.o: /usr/include/x86_64-linux-gnu/c++/9/bits/os_defines.h
 event.o: /usr/include/features.h /usr/include/stdc-predef.h
@@ -439,10 +434,8 @@ generator.o: /usr/include/c++/9/bits/locale_facets.tcc
 generator.o: /usr/include/c++/9/bits/basic_ios.tcc
 generator.o: /usr/include/c++/9/bits/ostream.tcc /usr/include/c++/9/istream
 generator.o: /usr/include/c++/9/bits/istream.tcc server.h
-generator.o: /usr/lib/gcc/x86_64-linux-gnu/9/include/stdint.h
-generator.o: /usr/lib/gcc/x86_64-linux-gnu/9/include/stdint-gcc.h
-generator.o: /usr/include/c++/9/random task.h /usr/include/c++/9/deque
-generator.o: /usr/include/c++/9/bits/stl_construct.h
+generator.o: /usr/include/c++/9/cstdint /usr/include/c++/9/random task.h
+generator.o: /usr/include/c++/9/deque /usr/include/c++/9/bits/stl_construct.h
 generator.o: /usr/include/c++/9/bits/stl_uninitialized.h
 generator.o: /usr/include/c++/9/bits/stl_deque.h
 generator.o: /usr/include/c++/9/bits/deque.tcc /usr/include/c++/9/cassert
@@ -457,9 +450,9 @@ generator.o: /usr/include/stdlib.h /usr/include/c++/9/bits/std_abs.h
 generator.o: /usr/include/stdlib.h /usr/include/c++/9/bits/algorithmfwd.h
 generator.o: /usr/include/c++/9/bits/stl_heap.h
 generator.o: /usr/include/c++/9/bits/stl_tempbuf.h generator.h
-task.o: task.h /usr/lib/gcc/x86_64-linux-gnu/9/include/stdint.h
-task.o: /usr/lib/gcc/x86_64-linux-gnu/9/include/stdint-gcc.h
-task.o: /usr/include/c++/9/deque /usr/include/c++/9/bits/stl_algobase.h
+task.o: task.h /usr/include/c++/9/cstdint
+task.o: /usr/include/c++/9/bits/c++0x_warning.h /usr/include/c++/9/deque
+task.o: /usr/include/c++/9/bits/stl_algobase.h
 task.o: /usr/include/x86_64-linux-gnu/c++/9/bits/c++config.h
 task.o: /usr/include/x86_64-linux-gnu/c++/9/bits/os_defines.h
 task.o: /usr/include/features.h /usr/include/stdc-predef.h
@@ -567,8 +560,7 @@ task.o: /usr/include/assert.h /usr/include/c++/9/vector
 task.o: /usr/include/c++/9/bits/stl_vector.h
 task.o: /usr/include/c++/9/bits/stl_bvector.h
 task.o: /usr/include/c++/9/bits/vector.tcc server.h /usr/include/c++/9/random
-task.o: /usr/include/c++/9/bits/c++0x_warning.h event.h
-task.o: /usr/include/c++/9/algorithm /usr/include/c++/9/utility
+task.o: event.h /usr/include/c++/9/algorithm /usr/include/c++/9/utility
 task.o: /usr/include/c++/9/bits/stl_relops.h
 task.o: /usr/include/c++/9/bits/stl_algo.h /usr/include/c++/9/cstdlib
 task.o: /usr/include/stdlib.h /usr/include/c++/9/bits/std_abs.h
