@@ -45,6 +45,7 @@ void RateGenerator::StartTask(const uint64_t & t) {
        	server->Queue(events, t, task);
        	last_task_time = t;
 }
+
 void RateGenerator::EndTask(const uint64_t & t) {
 }
 
@@ -56,6 +57,7 @@ QueueGenerator::QueueGenerator(const std::string & name, const size_t & size, co
 	       	IssueTask(0);
 	}
 }
+
 void QueueGenerator::StartTask(const uint64_t & t) {
        	ia_time_sum += t - last_task_time;
        	ia_time_count++;
@@ -63,6 +65,7 @@ void QueueGenerator::StartTask(const uint64_t & t) {
        	server->Queue(events, t, task);
        	last_task_time = t;
 }
+
 void QueueGenerator::EndTask(const uint64_t & t) {
 	StartTask(t);
 }

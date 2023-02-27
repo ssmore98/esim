@@ -103,6 +103,10 @@ void SSD_PM1733a::EndTask(Task * const task, const uint64_t & t) {
 	return;
 }
 
+size_t SSD_PM1733a::StripeSize() const {
+	return 0;
+}
+
 SSD_PM1733a::~SSD_PM1733a() {
 	std::cout << "PM1733a " << name << " (" << my_index << ")" << std::endl;
 	std::cout << "\tTotal I/Os " << n_tasks << std::endl;
@@ -118,10 +122,11 @@ SSD_PM1733a::~SSD_PM1733a() {
 
 RAID_0::RAID_0(const std::string & name, Servers & p_servers, const size_t & p_stripe_width, const uint64_t & t):
        	Server(name, 0), select_server_distr(0, p_servers.size() - 1),
-       	alignment_distr(0, stripe_width- 1), current_time(t), servers(p_servers), stripe_width(p_stripe_width) {
-		next_server = servers.begin();
-		space_left_in_stripe = stripe_width;
-		alignment = 0;
+       	current_time(t), servers(p_servers), stripe_width(p_stripe_width) {
+}
+
+size_t RAID_0::StripeSize() const {
+	return stripe_width * servers.size();
 }
 
 RAID_0::~RAID_0() {
@@ -151,36 +156,11 @@ void RAID_0::UnQueue(Events & events, const uint64_t & t) {
 
 Task * const RAID_0::Queue(Events & events, const uint64_t & t, Task * const task) {
 	Tasks tasks;
-	if (task->is_random) {
-	       	Servers::iterator next_server = servers.begin();
-	       	std::advance(next_server, select_server_distr(generator));
-	       	assert(next_server != servers.end());
-	       	alignment = alignment_distr(generator);
-	       	space_left_in_stripe = stripe_width - alignment;
-	}
-	size_t i = task->size;
-	while (i) {
-		if (i <= space_left_in_stripe) {
-		       	SubTask * const stask = new SubTask(task->t, i, task->is_read, task->is_random, this, NULL);
-		       	tasks.push_back(stask);
-		       	(*next_server)->Queue(events, t, stask);
-			space_left_in_stripe -= i;
-			if (!space_left_in_stripe) {
-			       	space_left_in_stripe = stripe_width;
-			       	next_server++;
-			       	if (next_server == servers.end()) next_server = servers.begin();
-			}
-			i = 0;
-		} else {
-		       	SubTask * const stask = new SubTask(task->t, space_left_in_stripe, task->is_read, task->is_random, this, NULL);
-		       	tasks.push_back(stask);
-		       	(*next_server)->Queue(events, t, stask);
-			next_server++;
-			if (next_server == servers.end()) next_server = servers.begin();
-			i -= space_left_in_stripe;
-			space_left_in_stripe = stripe_width;
-		}
-	}
+       	Servers::iterator data_server = servers.begin();
+       	std::advance(data_server, select_server_distr(generator));
+       	SubTask * const stask = new SubTask(task->t, task->size, task->is_read, task->is_random, this, NULL);
+       	tasks.push_back(stask);
+       	(*data_server)->Queue(events, t, stask);
 	MasterTask * const mtask = new MasterTask(task->t, task->size, task->is_read, task->is_random, task->server, task->generator, tasks);
 	delete task;
 	Server::Queue(events, t, mtask);
@@ -213,6 +193,10 @@ void RAID_0::EndTask(Task * const task, const uint64_t & t) {
 
 RAID_1::RAID_1(const std::string & name, Servers & p_servers, const uint64_t & t): Server(name, 0), select_server_distr(0, p_servers.size() - 1),
 	current_time(t), servers(p_servers) {
+}
+
+size_t RAID_1::StripeSize() const {
+	return 0;
 }
 
 Task * const RAID_1::Queue(Events & events, const uint64_t & t, Task * const task) {
@@ -291,7 +275,10 @@ RAID_1::~RAID_1() {
 
 RAID_5::RAID_5(const std::string & name, Servers & servers, const size_t & stripe_width, const uint64_t & t):
        	RAID_0(name, servers, stripe_width, t) {
-	       	parity = std::prev(RAID_0::servers.end());
+}
+
+size_t RAID_5::StripeSize() const {
+	return stripe_width * servers.size();
 }
 
 RAID_5::~RAID_5() {
@@ -344,66 +331,29 @@ void RAID_5::UnQueue(Events & events, const uint64_t & t) {
 	assert(0);
 }
 
-void RAID_5::AdvanceParity() {
-	assert(next_server != parity);
-       	assert(next_server == servers.end());
-       	next_server = servers.begin();
-	parity++;
-       	if (parity == servers.end()) {
-		parity = servers.begin();
-		next_server++;
-       	}
-	assert(next_server != parity);
-}
-
-bool RAID_5::AdvanceServer() {
-	assert(next_server != parity);
-       	next_server++;
-	if (next_server == parity) {
-	       	next_server++;
-	}
-       	if (next_server == servers.end()) {
-		AdvanceParity();
-		return true;
-       	}
-	assert(next_server != parity);
-	return false;
-}
-
 Task * const RAID_5::Queue(Events & events, const uint64_t & t, Task * const task) {
+	if (task->is_read) return RAID_0::Queue(events, t, task);
 	Tasks tasks;
-	if (task->is_random) {
-	       	next_server = servers.begin();
-	       	std::advance(next_server, select_server_distr(generator));
-		do {
-		       	parity = servers.begin();
-		       	std::advance(parity, select_server_distr(generator));
-		} while (parity == next_server);
-	       	assert(next_server != servers.end());
-	       	alignment = alignment_distr(generator);
-	       	space_left_in_stripe = stripe_width - alignment;
-	}
-	size_t i = task->size;
-	while (i) {
-		if (i <= space_left_in_stripe) {
-		       	SubTask * const stask = new SubTask(task->t, i, task->is_read, task->is_random, this, NULL);
-		       	tasks.push_back(stask);
-		       	(*next_server)->Queue(events, t, stask);
-			space_left_in_stripe -= i;
-			if (!space_left_in_stripe) {
-			       	space_left_in_stripe = stripe_width;
-				AdvanceServer();
-			}
-			i = 0;
-		} else {
-		       	SubTask * const stask = new SubTask(task->t, space_left_in_stripe, task->is_read, task->is_random, this, NULL);
-		       	tasks.push_back(stask);
-		       	(*next_server)->Queue(events, t, stask);
-		       	AdvanceServer();
-			i -= space_left_in_stripe;
-			space_left_in_stripe = stripe_width;
-		}
-	}
+       	Servers::iterator data_server = servers.begin();
+       	std::advance(data_server, select_server_distr(generator));
+	Servers::iterator parity_server = servers.begin();
+	do {
+		parity_server = servers.begin();
+		std::advance(parity_server, select_server_distr(generator));
+	} while (parity_server == data_server);
+	SubTask * stask = new SubTask(task->t, task->size, true, task->is_random, this, NULL);
+	tasks.push_back(stask);
+	(*data_server)->Queue(events, t, stask);
+	stask = new SubTask(task->t, task->size, true, task->is_random, this, NULL);
+	tasks.push_back(stask);
+	(*parity_server)->Queue(events, t, stask);
+
+	stask = new SubTask(task->t, task->size, false, task->is_random, this, NULL);
+	tasks.push_back(stask);
+	(*data_server)->Queue(events, t, stask);
+	stask = new SubTask(task->t, task->size, false, task->is_random, this, NULL);
+	tasks.push_back(stask);
+	(*parity_server)->Queue(events, t, stask);
 	MasterTask * const mtask = new MasterTask(task->t, task->size, task->is_read, task->is_random, task->server, task->generator, tasks);
 	delete task;
 	Server::Queue(events, t, mtask);
@@ -411,15 +361,18 @@ Task * const RAID_5::Queue(Events & events, const uint64_t & t, Task * const tas
 	return mtask;
 }
 
-#if 0
-RAID_4::RAID_4(const std::string & name, Servers & p_data_servers, Servers & p_parity_servers, const size_t & p_stripe_width,
-	       	const uint64_t & t): Server(name, t),
-       	select_server_distr(0, p_data_servers.size() - 1), current_time(t), current_stripe_fill(p_stripe_width * p_data_servers.size()),
-       	data_servers(p_data_servers), parity_servers(p_parity_servers), stripe_width(p_stripe_width) {
+RAID_4::RAID_4(const std::string & name, Servers & data_servers, Servers & p_parity_servers, const size_t & p_stripe_width,
+	       	const uint64_t & t): RAID_0(name, data_servers, stripe_width, t),
+       	select_parity_distr(0, p_parity_servers.size() - 1), current_time(t),
+       	parity_servers(p_parity_servers), stripe_width(p_stripe_width) {
+}
+
+size_t RAID_4::StripeSize() const {
+	return RAID_0::StripeSize() + stripe_width * parity_servers.size();
 }
 
 RAID_4::~RAID_4() {
-	std::cout << "RAID_4 " << name << " (" << my_index << ") " << "(data: " << data_servers << " parity: " << parity_servers << ")" << std::endl;
+	std::cout << "RAID_4 " << name << " (" << my_index << ") " << "(data: " << " parity: " << parity_servers << ")" << std::endl;
 	std::cout << "\tTotal I/Os " << n_tasks << std::endl;
 	if (current_time) std::cout << "\tIOPS " << (n_tasks * 1000 * 1000) / current_time << std::endl;
 	std::cout << "\tTotal Bytes " << sz_sum << std::endl;
@@ -431,77 +384,32 @@ RAID_4::~RAID_4() {
 	}
 }
 
-void RAID_4::Queue(Events & events, const uint64_t & t, Task * const task) {
-	SubTasks tasks;
-	if (task->is_read) {
-		Servers::iterator i_server = data_servers.begin();
-		std::advance(i_server, select_server_distr(generator));
-		if (i_server != data_servers.end()) {
-		       	SubTask * const stask = new SubTask(task->t, task->size, task->is_read, task->is_random, this, NULL);
-		       	tasks.push_back(stask);
-		       	(*i_server)->Queue(events, t, stask);
-		} else {
-			assert(0);
-		}
-	} else {
-		if (task->is_random) {
-			Servers::iterator i_server = data_servers.begin();
-			std::advance(i_server, select_server_distr(generator));
-			if (i_server != data_servers.end()) {
-				{
-				       	SubTask * const stask = new SubTask(task->t, task->size, true, task->is_random, this, NULL);
-					tasks.push_back(stask);
-				       	(*i_server)->Queue(events, t, stask);
-				}
-				{
-				       	SubTask * const stask = new SubTask(task->t, task->size, false, task->is_random, this, NULL);
-				       	tasks.push_back(stask);
-				       	(*i_server)->Queue(events, t, stask);
-				}
-			} else {
-				assert(0);
-			}
-			for (i_server = parity_servers.begin(); i_server != parity_servers.end(); i_server++) {
-				{
-				       	SubTask * const stask = new SubTask(task->t, task->size, true, task->is_random, this, NULL);
-				       	tasks.push_back(stask);
-				       	(*i_server)->Queue(events, t, stask);
-				}
-				{
-				       	SubTask * const stask = new SubTask(task->t, task->size, false, task->is_random, this, NULL);
-				       	tasks.push_back(stask);
-				       	(*i_server)->Queue(events, t, stask);
-				}
-			}
-		} else {
-			Servers::iterator i_server = data_servers.begin();
-			std::advance(i_server, select_server_distr(generator));
-			if (i_server != data_servers.end()) {
-				{
-				       	SubTask * const stask = new SubTask(task->t, task->size, false, task->is_random, this, NULL);
-				       	tasks.push_back(stask);
-				       	(*i_server)->Queue(events, t, stask);
-				}
-				if (current_stripe_fill > task->size) {
-					current_stripe_fill -= task->size;
-				} else {
-				       	for (i_server = parity_servers.begin(); i_server != parity_servers.end(); i_server++) {
-					       	SubTask * const stask = new SubTask(task->t, stripe_width,
-							       	false, task->is_random, this, NULL);
-					       	tasks.push_back(stask);
-					       	(*i_server)->Queue(events, t, stask);
-					}
-					current_stripe_fill = stripe_width * data_servers.size() - task->size + current_stripe_fill;
-				}
-			} else {
-				assert(0);
-			}
-		}
+Task * const RAID_4::Queue(Events & events, const uint64_t & t, Task * const task) {
+	if (task->is_read) return RAID_0::Queue(events, t, task);
+	Tasks tasks;
+       	Servers::iterator data_server = servers.begin();
+       	std::advance(data_server, select_server_distr(generator));
+	SubTask * stask = new SubTask(task->t, task->size, true, task->is_random, this, NULL);
+	tasks.push_back(stask);
+	(*data_server)->Queue(events, t, stask);
+	stask = new SubTask(task->t, task->size, false, task->is_random, this, NULL);
+	tasks.push_back(stask);
+	(*data_server)->Queue(events, t, stask);
+
+	for (Servers::iterator i_server = parity_servers.begin(); i_server != parity_servers.end(); i_server++) {
+	       	stask = new SubTask(task->t, task->size, true, task->is_random, this, NULL);
+	       	tasks.push_back(stask);
+	       	(*i_server)->Queue(events, t, stask);
+	       	stask = new SubTask(task->t, task->size, false, task->is_random, this, NULL);
+	       	tasks.push_back(stask);
+	       	(*i_server)->Queue(events, t, stask);
 	}
+
 	MasterTask * const mtask = new MasterTask(task->t, task->size, task->is_read, task->is_random, task->server, task->generator, tasks);
 	delete task;
 	Server::Queue(events, t, mtask);
        	// std::cout << "A " << mtask << " IOQ " << taskq;
+	return mtask;
 }
 
 void RAID_4::UnQueue(Events & events, const uint64_t & t) {
@@ -544,8 +452,7 @@ RAID_DP::RAID_DP(const std::string & name, Servers & data_servers, Servers & par
 }
 
 RAID_DP::~RAID_DP() {
-	std::cout << "RAID_DP " << name << " (" << my_index << ") " << "(data: " << data_servers << " parity: " << parity_servers << ")" << std::endl;
+	std::cout << "RAID_DP " << name << " (" << my_index << ") " << "(data: " << " parity: " << ")" << std::endl;
 }
-#endif
 
 #endif // SERVER_CPP

@@ -29,6 +29,7 @@ class Server {
 	       	virtual Task * const Queue(Events & events, const uint64_t & t, Task * const task);
 	       	virtual void UnQueue(Events & events, const uint64_t & t);
 	       	virtual void EndTask(Task * const task, const uint64_t & t) = 0;
+		virtual size_t StripeSize() const = 0;
 	       	virtual ~Server() = 0;
 };
 
@@ -45,15 +46,16 @@ class SSD_PM1733a: public Server {
 	       	virtual ~SSD_PM1733a();
 		virtual ServerEvent * const ScheduleTaskEnd(Task * const task, const uint64_t & t);
 	       	virtual void EndTask(Task * const task, const uint64_t & t);
+		virtual size_t StripeSize() const;
 };
 
 class RAID_0: public Server {
 	protected:
-	       	size_t alignment;
-	       	size_t space_left_in_stripe;
-	       	Servers::iterator next_server;
+	       	// size_t alignment;
+	       	// size_t space_left_in_stripe;
+	       	// Servers::iterator next_server;
 	       	std::uniform_int_distribution<uint16_t> select_server_distr;
-	       	std::uniform_int_distribution<uint16_t> alignment_distr;
+	       	// std::uniform_int_distribution<uint16_t> alignment_distr;
 		virtual uint64_t GetServiceTime(Task * const task);
 		const uint64_t & current_time;
 		Servers servers;
@@ -64,6 +66,7 @@ class RAID_0: public Server {
 	       	virtual void UnQueue(Events & events, const uint64_t & t);
 		virtual ServerEvent * const ScheduleTaskEnd(Task * const task, const uint64_t & t);
 	       	virtual void EndTask(Task * const task, const uint64_t & t);
+		virtual size_t StripeSize() const;
 	       	virtual ~RAID_0();
 };
 
@@ -79,47 +82,47 @@ class RAID_1: public Server {
 	       	virtual void UnQueue(Events & events, const uint64_t & t);
 		virtual ServerEvent * const ScheduleTaskEnd(Task * const task, const uint64_t & t);
 	       	virtual void EndTask(Task * const task, const uint64_t & t);
+		virtual size_t StripeSize() const;
 	       	virtual ~RAID_1();
 };
 
 class RAID_5: public RAID_0 {
 	protected:
-	       	Servers::iterator parity;
+	       	// Servers::iterator parity;
 		virtual uint64_t GetServiceTime(Task * const task);
-	       	void AdvanceParity();
-	       	bool AdvanceServer();
+	       	// void AdvanceParity();
+	       	// bool AdvanceServer();
 	public:
 		RAID_5(const std::string & name, Servers & p_servers, const size_t & p_stripe_width, const uint64_t & t);
 	       	virtual Task * const Queue(Events & events, const uint64_t & t, Task * const task);
 	       	virtual void UnQueue(Events & events, const uint64_t & t);
 		virtual ServerEvent * const ScheduleTaskEnd(Task * const task, const uint64_t & t);
 	       	virtual void EndTask(Task * const task, const uint64_t & t);
+		virtual size_t StripeSize() const;
 	       	virtual ~RAID_5();
 };
 
-#if 0
-class RAID_4: public Server {
+class RAID_4: public RAID_0 {
 	protected:
-	       	std::uniform_int_distribution<uint16_t> select_server_distr;
+	       	std::uniform_int_distribution<uint16_t> select_parity_distr;
 		virtual uint64_t GetServiceTime(Task * const task);
 		const uint64_t & current_time;
-		size_t current_stripe_fill;
 	public:
-		Servers data_servers, parity_servers;
+		Servers parity_servers;
 		const size_t stripe_width;
-		RAID_4(const std::string & name, Servers & p_data_servers, Servers & p_parity_servers, const size_t & p_stripe_width, const uint64_t & t);
-	       	virtual void Queue(Events & events, const uint64_t & t, Task * const task);
+		RAID_4(const std::string & name, Servers & data_servers, Servers & p_parity_servers, const size_t & p_stripe_width, const uint64_t & t);
+	       	virtual Task * const Queue(Events & events, const uint64_t & t, Task * const task);
 	       	virtual void UnQueue(Events & events, const uint64_t & t);
 		virtual ServerEvent * const ScheduleTaskEnd(Task * const task, const uint64_t & t);
 	       	virtual void EndTask(Task * const task, const uint64_t & t);
+	       	size_t StripeSize() const;
 	       	virtual ~RAID_4();
 };
 
 class RAID_DP: public RAID_4 {
 	public:
-		RAID_DP(const std::string & name, Servers & data_servers, Server & parity_servers, const size_t & p_stripe_width, const uint64_t & t);
+		RAID_DP(const std::string & name, Servers & data_servers, Servers & parity_servers, const size_t & p_stripe_width, const uint64_t & t);
 	       	virtual ~RAID_DP();
 };
-#endif
 
 #endif // SERVER_H

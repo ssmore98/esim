@@ -28,16 +28,6 @@ std::ostream & operator<<(std::ostream & o, const TaskQ & taskq) {
 	return o;
 }
 
-#if 0
-ReadTask::ReadTask(const uint64_t & t, const size_t & size, Server * const server, Generator * const generator):
-       	Task(t, size, server, generator) {
-}
-
-WriteTask::WriteTask(const uint64_t & t, const size_t & size, Server * const server, Generator * const generator):
-       	Task(t, size, server, generator) {
-}
-#endif
-
 SubTask::SubTask(const uint64_t & t, const size_t & size, const bool & is_read, const bool & is_random, Server * const server, Generator * const generator):
        	Task(t, size, is_read, is_random, server, generator), mtask(NULL) {
        	}

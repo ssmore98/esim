@@ -52,5 +52,4 @@ class QueueGenerator : public Generator {
 	       	void EndTask(const uint64_t & t);
 };
 
-
 #endif // GENERATOR_H
