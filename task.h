@@ -35,6 +35,7 @@ typedef std::deque<Task *> TaskQ;
 typedef std::vector<Task *> Tasks;
 
 std::ostream & operator<<(std::ostream & o, const TaskQ & taskq);
+std::ostream & operator<<(std::ostream & o, const Tasks & tasks);
 
 class SubTask: public Task {
 	protected:

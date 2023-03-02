@@ -100,10 +100,12 @@ ServerEvent * const SSD_PM1733a::ScheduleTaskEnd(Task * const task, const uint64
 }
 
 void SSD_PM1733a::EndTask(Task * const task, const uint64_t & t) {
+	assert(0);
 	return;
 }
 
 size_t SSD_PM1733a::StripeSize() const {
+	assert(0);
 	return 0;
 }
 
@@ -191,8 +193,8 @@ void RAID_0::EndTask(Task * const task, const uint64_t & t) {
 	}
 }
 
-RAID_1::RAID_1(const std::string & name, Servers & p_servers, const uint64_t & t): Server(name, 0), select_server_distr(0, p_servers.size() - 1),
-	current_time(t), servers(p_servers) {
+RAID_1::RAID_1(const std::string & name, Servers & servers, const uint64_t & t): RAID_0(name, servers, 0, t),
+       	select_server_distr(0, servers.size() - 1) {
 }
 
 size_t RAID_1::StripeSize() const {
@@ -237,29 +239,6 @@ void RAID_1::UnQueue(Events & events, const uint64_t & t) {
 	assert(0);
 }
 
-void RAID_1::EndTask(Task * const task, const uint64_t & t) {
-	// this is a subtask
-	// find the master task
-	MasterTask * const m_task = task->MTASK();
-	// std::cout << m_task << std::endl;
-	if (0 == m_task->EndTask(task, t)) {	
-	       	// std::cout << "R " << m_task << " IOQ " << taskq;
-		TaskQ::iterator i_task = std::find(taskq.begin(), taskq.end(), m_task);
-		if (taskq.end() != i_task) {
-		       	// std::cout << "IO start:" << (*i_task)->t << " end:" << t << std::endl;
-			task_time += t - (*i_task)->t;
-		       	n_tasks++;
-			Generator * const g = (*i_task)->generator;
-		       	sz_sum += (*i_task)->size;
-		       	delete m_task;
-		       	taskq.erase(i_task);
-		       	if (g) g->EndTask(t);
-		} else {
-			assert(0);
-		}
-	}
-}
-
 RAID_1::~RAID_1() {
 	std::cout << "RAID_1 " << name << " (" << my_index << ") " << "(servers: " << servers << ")" << std::endl;
 	std::cout << "\tTotal I/Os " << n_tasks << std::endl;
@@ -278,7 +257,7 @@ RAID_5::RAID_5(const std::string & name, Servers & servers, const size_t & strip
 }
 
 size_t RAID_5::StripeSize() const {
-	return stripe_width * servers.size();
+	return stripe_width * (servers.size() - 1);
 }
 
 RAID_5::~RAID_5() {
@@ -294,29 +273,6 @@ RAID_5::~RAID_5() {
 	       	std::cout << "\tavQueueDepth " << double(qd_sum) / double(n_tasks) << std::endl;
 	}
 	*/
-}
-
-void RAID_5::EndTask(Task * const task, const uint64_t & t) {
-	// this is a subtask
-	// find the master task
-	MasterTask * const m_task = task->MTASK();
-	// std::cout << m_task << std::endl;
-	if (0 == m_task->EndTask(task, t)) {	
-	       	// std::cout << "R " << m_task << " IOQ " << taskq;
-		TaskQ::iterator i_task = std::find(taskq.begin(), taskq.end(), m_task);
-		if (taskq.end() != i_task) {
-		       	// std::cout << "IO start:" << (*i_task)->t << " end:" << t << std::endl;
-			task_time += t - (*i_task)->t;
-		       	n_tasks++;
-			Generator * const g = (*i_task)->generator;
-		       	sz_sum += (*i_task)->size;
-		       	delete m_task;
-		       	taskq.erase(i_task);
-		       	if (g) g->EndTask(t);
-		} else {
-			assert(0);
-		}
-	}
 }
 
 uint64_t RAID_5::GetServiceTime(Task * const task) {
@@ -368,7 +324,7 @@ RAID_4::RAID_4(const std::string & name, Servers & data_servers, Servers & p_par
 }
 
 size_t RAID_4::StripeSize() const {
-	return RAID_0::StripeSize() + stripe_width * parity_servers.size();
+	return RAID_0::StripeSize();
 }
 
 RAID_4::~RAID_4() {
@@ -424,7 +380,50 @@ ServerEvent * const RAID_4::ScheduleTaskEnd(Task * const task, const uint64_t & 
 	return NULL;
 }
 
-void RAID_4::EndTask(Task * const task, const uint64_t & t) {
+RAID_DP::RAID_DP(const std::string & name, Servers & data_servers, Servers & parity_servers,
+	       	const size_t & stripe_width, const uint64_t & t): RAID_4(name, data_servers, parity_servers, stripe_width, 0) {
+}
+
+RAID_DP::~RAID_DP() {
+	std::cout << "RAID_DP " << name << " (" << my_index << ") " << "(data: " << " parity: " << ")" << std::endl;
+}
+
+size_t RAID_DP::GetAccWriteSize() const {
+	size_t retval = 0;
+	for (auto & n : write_tasks) retval += n->size;
+	return retval;
+}
+
+Task * const RAID_DP::Queue(Events & events, const uint64_t & t, Task * const task) {
+	if (task->is_read) return RAID_0::Queue(events, t, task);
+	write_tasks.push_back(task);
+	if (StripeSize() <= GetAccWriteSize()) {
+	       	Tasks tasks;
+		for (Servers::iterator i_server = servers.begin(); i_server != servers.end(); i_server++) {
+		       	SubTask * const stask = new SubTask(t, stripe_width, false, false, this, NULL);
+		       	tasks.push_back(stask);
+		       	(*i_server)->Queue(events, t, stask);
+		}
+	       	for (Servers::iterator i_server = parity_servers.begin(); i_server != parity_servers.end(); i_server++) {
+		       	SubTask * const stask = new SubTask(t, stripe_width, false, false, this, NULL);
+		       	tasks.push_back(stask);
+		       	(*i_server)->Queue(events, t, stask);
+		}
+	       	MasterTask * const mtask = new MasterTask(t, StripeSize() + stripe_width * parity_servers.size(),
+			       	false, false, this, NULL, tasks);
+	       	Server::Queue(events, t, mtask);
+		pending_write_tasks.insert(pending_write_tasks.end(), write_tasks.begin(), write_tasks.end());
+		write_tasks.clear();
+	       	return mtask;
+	}
+	return NULL;
+}
+
+void RAID_DP::EndTask(Task * const task, const uint64_t & t) {
+	if (task->is_read) {
+		RAID_0::EndTask(task, t);
+		return;
+	}
 	// this is a subtask
 	// find the master task
 	MasterTask * const m_task = task->MTASK();
@@ -433,26 +432,27 @@ void RAID_4::EndTask(Task * const task, const uint64_t & t) {
 	       	// std::cout << "R " << m_task << " IOQ " << taskq;
 		TaskQ::iterator i_task = std::find(taskq.begin(), taskq.end(), m_task);
 		if (taskq.end() != i_task) {
-		       	// std::cout << "IO start:" << (*i_task)->t << " end:" << t << std::endl;
-			task_time += t - (*i_task)->t;
-		       	n_tasks++;
-			Generator * const g = (*i_task)->generator;
-		       	sz_sum += (*i_task)->size;
-		       	delete m_task;
+			if ((*i_task)->is_read) {
+				assert(0);
+			} else {
+			       	exit(0);
+				for (Tasks::iterator j_task = pending_write_tasks.begin();
+						j_task != pending_write_tasks.end(); j_task++) {
+				       	task_time += t - (*j_task)->t;
+				       	n_tasks++;
+				       	sz_sum += (*j_task)->size;
+				       	Generator * const g = (*j_task)->generator;
+				       	if (g) g->EndTask(t);
+					delete *j_task;
+				}
+				pending_write_tasks.clear();
+			}
 		       	taskq.erase(i_task);
-		       	if (g) g->EndTask(t);
+		       	delete m_task;
 		} else {
 			assert(0);
 		}
 	}
-}
-
-RAID_DP::RAID_DP(const std::string & name, Servers & data_servers, Servers & parity_servers,
-	       	const size_t & stripe_width, const uint64_t & t): RAID_4(name, data_servers, parity_servers, stripe_width, 0) {
-}
-
-RAID_DP::~RAID_DP() {
-	std::cout << "RAID_DP " << name << " (" << my_index << ") " << "(data: " << " parity: " << ")" << std::endl;
 }
 
 #endif // SERVER_CPP

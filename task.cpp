@@ -28,6 +28,14 @@ std::ostream & operator<<(std::ostream & o, const TaskQ & taskq) {
 	return o;
 }
 
+std::ostream & operator<<(std::ostream & o, const Tasks & tasks) {
+	for (Tasks::const_iterator i = tasks.begin(); i != tasks.end(); i++) {
+		o << "(" << (*i) << ") ";
+	}
+	o << std::endl;
+	return o;
+}
+
 SubTask::SubTask(const uint64_t & t, const size_t & size, const bool & is_read, const bool & is_random, Server * const server, Generator * const generator):
        	Task(t, size, is_read, is_random, server, generator), mtask(NULL) {
        	}
