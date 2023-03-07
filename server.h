@@ -6,6 +6,7 @@
 #include <cstdint>
 #include <random>
 #include <map>
+#include <set>
 
 #include "task.h"
 #include "event.h"
@@ -26,42 +27,70 @@ class Server {
 	public:
 		const uint16_t my_index;
 		const std::string name;
-		Server(const std::string & p_name, const unsigned int & service_time);
+		Server(const std::string & p_name);
 	       	virtual Task * const Queue(Events & events, const uint64_t & t, Task * const task);
 	       	virtual void UnQueue(Events & events, const uint64_t & t);
 	       	virtual void EndTask(Task * const task, const uint64_t & t) = 0;
 		virtual size_t StripeSize() const = 0;
 	       	virtual ~Server() = 0;
 		virtual void print(std::ostream & o, const uint64_t & current_time);
+		const uint64_t & N_TASKS() const;
+		const uint64_t & SZ_SUM() const;
+		const uint64_t & TASK_TIME() const;
+		const uint64_t & SVC_SUM() const;
+		const uint64_t & QD_SUM() const;
 };
 
-typedef std::vector<Server *> Servers;
+class Servers: public std::set<Server *> {
+	public:
+	       	void print(std::ostream & o, const uint64_t & current_time) const;
+};
+
 class Shelf;
 
 class Drive: public Server {
 	protected:
 		Shelf *shelf;
 	public:
-		Drive(const std::string & name, const unsigned int & service_time);
+		Drive(const std::string & name);
 		Drive & operator=(Shelf * const p_self);
+		Shelf * const SHELF() const;
 };
 
-typedef std::vector<Drive *> Drives;
+typedef std::set<Drive *> Drives;
 
-class Shelf: public Server {
+class IOModule: public Server {
 	protected:
-		Drives drives;
 		virtual uint64_t GetServiceTime(Task * const task);
 	public:
-		Shelf(const std::string & name, Drives p_drives);
-	       	virtual ~Shelf();
-		virtual void print(std::ostream & o, const uint64_t & current_time);
+		IOModule(const std::string & name);
+	       	virtual ~IOModule();
 		virtual ServerEvent * const ScheduleTaskEnd(Task * const task, const uint64_t & t);
-		virtual size_t StripeSize() const;
 	       	virtual void EndTask(Task * const task, const uint64_t & t);
+		virtual size_t StripeSize() const;
+	       	virtual void print(std::ostream & o, const uint64_t & current_time);
 };
 
-typedef std::vector<Shelf *> Shelves;
+class IOModules: public std::set<IOModule *> {
+	public:
+	       	void print(std::ostream & o, const uint64_t & current_time) const;
+};
+
+class Shelf {
+	protected:
+		Drives drives;
+		IOModules ioms;
+	public:
+		const std::string name;
+		Shelf(const std::string & name);
+	       	virtual ~Shelf();
+		Shelf & operator=(Drive * const drive);
+		Shelf & operator=(IOModule * const iom);
+	       	void print(std::ostream & o, const uint64_t & current_time);
+	       	Task * const Queue(Events & events, const uint64_t & t, Task * const task, Drive * const drive);
+};
+
+typedef std::set<Shelf *> Shelves;
 
 class SSD_PM1733a: public Drive {
 	protected:
@@ -79,10 +108,10 @@ class SSD_PM1733a: public Drive {
 
 class RAID: public Server {
 	public:
-		RAID(const std::string & name, const unsigned int & service_time);
+		RAID(const std::string & name);
 };
 
-typedef std::vector<RAID *> RAIDs;
+typedef std::set<RAID *> RAIDs;
 
 class RAID_0: public RAID {
 	protected:

@@ -19,7 +19,11 @@ raid:
           - ssd2
           - ssd3
           - ssd4
+iom:
+        name: iom1
 shelf:
+        ioms:
+          - iom1
         drives: 
           - ssd1
           - ssd2

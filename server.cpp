@@ -26,9 +26,8 @@ void Server::print(std::ostream & o, const uint64_t & current_time) {
 	}
 }
 
-Server::Server(const std::string & p_name, const unsigned int & service_time):
-       	n_tasks(0), task_time(0), qd_sum(0), svc_sum(0),
-       	sz_sum(0), my_index(index), name(p_name) {
+Server::Server(const std::string & p_name):
+       	n_tasks(0), task_time(0), qd_sum(0), svc_sum(0), sz_sum(0), my_index(index), name(p_name) {
 	       	index++;
        	}
 
@@ -75,7 +74,7 @@ void Server::UnQueue(Events & events, const uint64_t & t) {
 Server::~Server() {
 }
 
-SSD_PM1733a::SSD_PM1733a(const std::string & name): Drive(name, 0),
+SSD_PM1733a::SSD_PM1733a(const std::string & name): Drive(name),
        	read_service_time_distr(double(1)/(double)0.031), write_service_time_distr(double(1)/double(8)) {
 }
 
@@ -135,11 +134,11 @@ void SSD_PM1733a::print(std::ostream & o, const uint64_t & current_time) {
 	this->Server::print(o, current_time);
 }
 
-RAID::RAID(const std::string & name, const unsigned int & service_time): Server(name, service_time) {
+RAID::RAID(const std::string & name): Server(name) {
 }
 
 RAID_0::RAID_0(const std::string & name, Drives & p_drives, const size_t & p_stripe_width, const std::string & p_raid_level):
-       	RAID(name, 0), select_server_distr(0, p_drives.size() - 1),
+       	RAID(name), select_server_distr(0, p_drives.size() - 1),
        	drives(p_drives), stripe_width(p_stripe_width), raid_level(p_raid_level) {
 }
 
@@ -189,8 +188,13 @@ Task * const RAID_0::Queue(Events & events, const uint64_t & t, Task * const tas
        	std::advance(data_drive, select_server_distr(generator));
        	SubTask * const stask = new SubTask(task->t, task->size, task->is_read, task->is_random, this, NULL);
        	stasks.push_back(stask);
-       	(*data_drive)->Queue(events, t, stask);
-	MasterTask * const mtask = new MasterTask(task->t, task->size, task->is_read, task->is_random, task->server, task->generator, stasks);
+	if ((*data_drive)->SHELF()) {
+	       	(*data_drive)->SHELF()->Queue(events, t, stask, *data_drive);
+	} else {
+	       	(*data_drive)->Queue(events, t, stask);
+	}
+	MasterTask * const mtask = new MasterTask(task->t, task->size, task->is_read,
+		       	task->is_random, task->server, task->generator, stasks);
 	delete task;
 	Server::Queue(events, t, mtask);
        	// std::cout << "A " << mtask << " IOQ " << taskq;
@@ -528,7 +532,7 @@ std::ostream & operator<<(std::ostream & o, const ConsistencyPoints & cps) {
 	return o;
 }
 
-Drive::Drive(const std::string & name, const unsigned int & service_time): Server(name, service_time), shelf(NULL) {
+Drive::Drive(const std::string & name): Server(name), shelf(NULL) {
 }
 
 Drive & Drive::operator=(Shelf * const p_shelf) {
@@ -536,25 +540,95 @@ Drive & Drive::operator=(Shelf * const p_shelf) {
 	return *this;
 }
 
-Shelf::Shelf(const std::string & name, Drives p_drives): Server(name, 0), drives(p_drives) {
-	for (Drives::iterator i = drives.begin(); i != drives.end(); i++) {
-		**i = this;
-	}
+Shelf::Shelf(const std::string & p_name): name(p_name) {
 }
 
 Shelf::~Shelf() {
 }
 
+const uint64_t & Server::N_TASKS() const { return n_tasks; }
+const uint64_t & Server::SZ_SUM() const { return sz_sum; }
+
+static uint64_t sumtasks(uint64_t acc, IOModule * const x) { return acc + x->N_TASKS(); }
+static uint64_t sumszs(uint64_t acc, IOModule * const x) { return acc + x->SZ_SUM(); }
+
 void Shelf::print(std::ostream & o, const uint64_t & current_time) {
-	o << "Shelf " /*<< name << " (" << my_index << ")"*/ << std::endl;
-	/*
-	o << "SSD_PM1733a " << name << " (" << my_index << ")" << std::endl;
+	o << "Shelf " << name << std::endl;
+	for (IOModules::const_iterator i = ioms.begin(); i != ioms.end(); i++) {
+	       	o << "\t IOM " << (*i)->name << std::endl;
+	}
+	for (Drives::const_iterator i = drives.begin(); i != drives.end(); i++) {
+	       	o << "\t Drive " << (*i)->name << std::endl;
+	}
+	o << "\tTotal I/Os " << std::accumulate(ioms.begin(), ioms.end(), 0, sumtasks) << std::endl;
+	if (current_time) o << "\tIOPS " << (std::accumulate(ioms.begin(), ioms.end(), 0, sumtasks)
+		       	* 1000 * 1000) / current_time << std::endl;
+	o << "\tTotal Bytes " << std::accumulate(ioms.begin(), ioms.end(), 0, sumszs) << std::endl;
+	if (current_time) o << "\tMBPS " << (std::accumulate(ioms.begin(), ioms.end(), 0, sumszs) * 1000 * 1000)
+	       	/ (current_time * 1024 * 1024) << std::endl;
+	ioms.print(o, current_time);
+}
+
+Shelf & Shelf::operator=(IOModule * const iom) {
+	ioms.insert(iom);
+	return *this;
+}
+
+Shelf & Shelf::operator=(Drive * const drive) {
+	drives.insert(drive);
+	return *this;
+}
+
+IOModule::IOModule(const std::string & name): Server(name) {
+}
+
+IOModule::~IOModule() {
+}
+
+uint64_t IOModule::GetServiceTime(Task * const task) {
+	assert(0);
+	return 0;
+}
+
+ServerEvent * const IOModule::ScheduleTaskEnd(Task * const task, const uint64_t & t) {
+	assert(0);
+	return NULL;
+}
+
+void IOModule::EndTask(Task * const task, const uint64_t & t) {
+	assert(0);
+}
+
+size_t IOModule::StripeSize() const {
+	assert(0);
+	return 0;
+}
+
+void IOModule::print(std::ostream & o, const uint64_t & current_time) {
+	o << "IOM " << name << std::endl;
 	o << "\tTotal I/Os " << n_tasks << std::endl;
 	if (current_time) o << "\tIOPS " << (n_tasks * 1000 * 1000) / current_time << std::endl;
 	o << "\tTotal Bytes " << sz_sum << std::endl;
 	if (current_time) o << "\tMBPS " << (sz_sum * 1000 * 1000) / (current_time * 1024 * 1024) << std::endl;
 	this->Server::print(o, current_time);
-	*/
+}
+
+const uint64_t & Server::TASK_TIME() const { return task_time; }
+const uint64_t & Server::SVC_SUM() const { return svc_sum; }
+const uint64_t & Server::QD_SUM() const { return qd_sum; }
+static uint64_t sumtasktime(uint64_t acc, IOModule * const x) { return acc + x->TASK_TIME(); }
+static uint64_t sumsvcsum(uint64_t acc, IOModule * const x) { return acc + x->SVC_SUM(); }
+static uint64_t sumqdsum(uint64_t acc, IOModule * const x) { return acc + x->QD_SUM(); }
+
+void IOModules::print(std::ostream & o, const uint64_t & current_time) const {
+	if (std::accumulate(begin(), end(), 0, sumtasks)) {
+	       	o << "\tavLatency " << double(std::accumulate(begin(), end(), 0, sumtasktime)) /
+		       	double(std::accumulate(begin(), end(), 0, sumtasks)) << std::endl;
+	       	o << "\tavServiceTime " << double(std::accumulate(begin(), end(), 0, sumsvcsum)) /
+		       	double(std::accumulate(begin(), end(), 0, sumtasks)) << std::endl;
+	       	o << "\tavQueueDepth " << double(std::accumulate(begin(), end(), 0, sumqdsum)) /
+		       	double(std::accumulate(begin(), end(), 0, sumtasks)) << std::endl;
+	}
 }
 
 #endif // SERVER_CPP

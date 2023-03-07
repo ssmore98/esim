@@ -215,7 +215,7 @@ std::vector<std::string> GetStrings(yaml_parser_t & parser) {
 	return retval;
 }
 
-Shelf * const ParseShelf(yaml_parser_t & parser, Events & events, const Drives & drives) {
+Shelf * const ParseShelf(yaml_parser_t & parser, Events & events, const Drives & drives, const IOModules & ioms) {
 	yaml_event_t e;
 	std::string key;
 	std::string value;
@@ -223,6 +223,7 @@ Shelf * const ParseShelf(yaml_parser_t & parser, Events & events, const Drives &
 	bool expect_key = false;
 	uint16_t in_mapping = 0;
 	std::vector<std::string> drive_names;
+	std::vector<std::string> iom_names;
 	while (true) {
 		if (!yaml_parser_parse(&parser, &e)) {
 		       	assert(0);
@@ -244,12 +245,33 @@ Shelf * const ParseShelf(yaml_parser_t & parser, Events & events, const Drives &
 						// std::cout << *i << std::endl;
 						for (Drives::const_iterator j = drives.begin(); j != drives.end(); j++) {
 							if (!strcasecmp((*j)->name.c_str(), (*i).c_str())) {
-								shelf_drives.push_back(*j);
+								shelf_drives.insert(*j);
 								break;
 							}
 						}
 					}
-				       	return new Shelf(name, shelf_drives);
+					IOModules shelf_ioms;
+					for (std::vector<std::string>::const_iterator i = iom_names.begin();
+						       	i != iom_names.end(); i++) {
+						// std::cout << *i << std::endl;
+						for (IOModules::const_iterator j = ioms.begin();
+							       	j != ioms.end(); j++) {
+							if (!strcasecmp((*j)->name.c_str(), (*i).c_str())) {
+								shelf_ioms.insert(*j);
+								break;
+							}
+						}
+					}
+				       	Shelf * const retval = new Shelf(name);
+					for (Drives::const_iterator i = shelf_drives.begin();
+							i != shelf_drives.end(); i++) {
+						*retval = *i;
+					}
+					for (IOModules::const_iterator i = shelf_ioms.begin();
+							i != shelf_ioms.end(); i++) {
+						*retval = *i;
+					}
+					return retval;
 				}
 				break;
 			case YAML_SCALAR_EVENT:
@@ -273,6 +295,8 @@ Shelf * const ParseShelf(yaml_parser_t & parser, Events & events, const Drives &
 			case YAML_SEQUENCE_START_EVENT:
 			       	if (!strcasecmp("drives", key.c_str())) {
 					drive_names = GetStrings(parser);
+				} else if (!strcasecmp("ioms", key.c_str())) {
+					iom_names = GetStrings(parser);
 				} else {
 				       	assert(0);
 				}
@@ -378,7 +402,7 @@ RAID * const ParseRAID(yaml_parser_t & parser, Events & events, const Drives & d
 						// std::cout << *i << std::endl;
 						for (Drives::const_iterator j = drives.begin(); j != drives.end(); j++) {
 							if (!strcasecmp((*j)->name.c_str(), (*i).c_str())) {
-								raid_drives.push_back(*j);
+								raid_drives.insert(*j);
 								break;
 							}
 						}
@@ -391,7 +415,7 @@ RAID * const ParseRAID(yaml_parser_t & parser, Events & events, const Drives & d
 						// std::cout << *i << std::endl;
 						for (Drives::const_iterator j = drives.begin(); j != drives.end(); j++) {
 							if (!strcasecmp((*j)->name.c_str(), (*i).c_str())) {
-								raid_drives.push_back(*j);
+								raid_drives.insert(*j);
 								break;
 							}
 						}
@@ -404,7 +428,7 @@ RAID * const ParseRAID(yaml_parser_t & parser, Events & events, const Drives & d
 						// std::cout << *i << std::endl;
 						for (Drives::const_iterator j = drives.begin(); j != drives.end(); j++) {
 							if (!strcasecmp((*j)->name.c_str(), (*i).c_str())) {
-								raid_drives.push_back(*j);
+								raid_drives.insert(*j);
 								break;
 							}
 						}
@@ -417,7 +441,7 @@ RAID * const ParseRAID(yaml_parser_t & parser, Events & events, const Drives & d
 						// std::cout << *i << std::endl;
 						for (Drives::const_iterator j = drives.begin(); j != drives.end(); j++) {
 							if (!strcasecmp((*j)->name.c_str(), (*i).c_str())) {
-								raid_drives.push_back(*j);
+								raid_drives.insert(*j);
 								break;
 							}
 						}
@@ -427,9 +451,9 @@ RAID * const ParseRAID(yaml_parser_t & parser, Events & events, const Drives & d
 					size_t count = 0;
 					for (Drives::iterator i = raid_drives.begin(); i != raid_drives.end(); i++) {
 						if (count < 1) {
-						       	parity_drives.push_back(*i);
+						       	parity_drives.insert(*i);
 						} else {
-						       	data_drives.push_back(*i);
+						       	data_drives.insert(*i);
 						}
 						count++;
 					}
@@ -441,7 +465,7 @@ RAID * const ParseRAID(yaml_parser_t & parser, Events & events, const Drives & d
 						// std::cout << *i << std::endl;
 						for (Drives::const_iterator j = drives.begin(); j != drives.end(); j++) {
 							if (!strcasecmp((*j)->name.c_str(), (*i).c_str())) {
-								raid_drives.push_back(*j);
+								raid_drives.insert(*j);
 								break;
 							}
 						}
@@ -451,9 +475,9 @@ RAID * const ParseRAID(yaml_parser_t & parser, Events & events, const Drives & d
 					size_t count = 0;
 					for (Drives::iterator i = raid_drives.begin(); i != raid_drives.end(); i++) {
 						if (count < 2) {
-						       	parity_drives.push_back(*i);
+						       	parity_drives.insert(*i);
 						} else {
-						       	data_drives.push_back(*i);
+						       	data_drives.insert(*i);
 						}
 						count++;
 					}
@@ -499,6 +523,60 @@ RAID * const ParseRAID(yaml_parser_t & parser, Events & events, const Drives & d
 	       	}
 		yaml_event_delete(&e);
 	}
+	assert(0);
+	return NULL;
+}
+
+IOModule * const ParseIOModule(yaml_parser_t & parser, Events & events) {
+	yaml_event_t e;
+	std::string key;
+	std::string value;
+	uint16_t in_mapping = 0;
+	bool expect_key = false;
+	std::string name = "iom";
+	while (true) {
+		if (!yaml_parser_parse(&parser, &e)) {
+		       	assert(0);
+	       	}
+	       	switch (e.type) {
+			case YAML_MAPPING_START_EVENT:
+				// std::cout << e.data.mapping_start.style << std::endl;
+				expect_key = true;
+				in_mapping += 1;
+				// std::cout << in_mapping << std::endl;
+				break;
+			case YAML_MAPPING_END_EVENT:
+				assert(in_mapping);
+				in_mapping--;
+				// std::cout << in_mapping << std::endl;
+				if (!in_mapping) {
+					return new IOModule(name);
+				}
+				break;
+			case YAML_SCALAR_EVENT:
+				if (e.data.scalar.value) {
+				        if (expect_key) {
+						key = (char *)e.data.scalar.value;
+						// std::cout << "KEY " << key <<std::endl;
+						expect_key = false;
+					} else {
+						value = (char *)e.data.scalar.value;
+						// std::cout << "VALUE " << value <<std::endl;
+						expect_key = true;
+					       	if (!strcasecmp("name", key.c_str())) {
+						       	name = value;
+					       	} else {
+						       	assert(0);
+						}
+					}
+				}
+				break;
+		       	default:
+			       	std::cout << e.type <<std::endl;
+			       	assert(0);
+	       	}
+		yaml_event_delete(&e);
+       	}
 	assert(0);
 	return NULL;
 }
@@ -610,6 +688,7 @@ int main(int argc, char **argv) {
 	Events events;
 	RAIDs raids;
 	Drives drives;
+	IOModules ioms;
 	Generators generators;
 	Shelves shelves;
 	uint64_t simulation_time = 0;
@@ -634,11 +713,13 @@ int main(int argc, char **argv) {
 				       	if (!strcasecmp("generator", (char *)e.data.scalar.value)) {
 						generators.push_back(ParseGenerator(parser, events, raids));
 				       	} else if (!strcasecmp("raid", (char *)e.data.scalar.value)) {
-					       	raids.push_back(ParseRAID(parser, events, drives));
+					       	raids.insert(ParseRAID(parser, events, drives));
 				       	} else if (!strcasecmp("drive", (char *)e.data.scalar.value)) {
-					       	drives.push_back(ParseDrive(parser, events));
+					       	drives.insert(ParseDrive(parser, events));
 				       	} else if (!strcasecmp("shelf", (char *)e.data.scalar.value)) {
-					       	shelves.push_back(ParseShelf(parser, events, drives));
+					       	shelves.insert(ParseShelf(parser, events, drives, ioms));
+				       	} else if (!strcasecmp("iom", (char *)e.data.scalar.value)) {
+					       	ioms.insert(ParseIOModule(parser, events));
 				       	} else if (expect_value) {
 						if (!strcasecmp("simulation_time", key.c_str())) {
 						       	simulation_time = std::stoull((char *)e.data.scalar.value);
@@ -712,6 +793,10 @@ int main(int argc, char **argv) {
 	for (Drives::const_iterator drive = drives.begin(); drive != drives.end(); drive++) {
 		(*drive)->print(std::cout, t);
 	       	delete *drive;
+	}
+	for (IOModules::const_iterator iom = ioms.begin(); iom != ioms.end(); iom++) {
+		(*iom)->print(std::cout, t);
+	       	delete *iom;
 	}
 	return 0;
 }
