@@ -24,7 +24,6 @@ class Task {
 		const bool is_random;
 		Task(const uint64_t & p_t, const size_t & p_size, const bool & pis_read, const bool & pis_random,
 			       	Server * const p_server, Generator * const p_generator);
-		virtual MasterTask * & MTASK();
 		virtual ~Task() {
 		}
 };
@@ -43,16 +42,18 @@ class SubTask: public Task {
 	public:
 		SubTask(const uint64_t & t, const size_t & size, const bool & is_read, const bool & is_random,
 			       	Server * const server, Generator * const generator);
-		virtual MasterTask * & MTASK();
+		virtual MasterTask * MTASK() const;
+		SubTask & operator=(MasterTask * const p_mtask);
 };
+
+typedef std::vector<SubTask *> SubTasks;
 
 class MasterTask: public Task {
 	protected:
-		Tasks tasks;
+		SubTasks tasks;
 	public:
 	       	MasterTask(const uint64_t & t, const size_t & size, const bool & is_read, const bool & is_random,
-			       	Server * const server, Generator * const generator, Tasks p_tasks);
-		virtual MasterTask * & MTASK();
+			       	Server * const server, Generator * const generator, SubTasks p_tasks);
 	       	size_t EndTask(Task * const task, const uint64_t & t);
 };
 

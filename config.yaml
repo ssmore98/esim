@@ -1,30 +1,36 @@
-server:
+drive:
         name: ssd1
         type: ssd_pm1733a
-server:
+drive:
         name: ssd2
         type: ssd_pm1733a
-server:
+drive:
         name: ssd3
         type: ssd_pm1733a
-server:
+drive:
         name: ssd4
         type: ssd_pm1733a
-server:
+raid:
         name: raid
         type: raid_dp
         stripe_width: 512
-        servers: 
+        drives: 
+          - ssd1
+          - ssd2
+          - ssd3
+          - ssd4
+shelf:
+        drives: 
           - ssd1
           - ssd2
           - ssd3
           - ssd4
 generator:
         name: gen1
-        queue_depth: 16
-        server: raid
-        # iops: 75900
+        raid: raid
+        queue_depth: 1
+        # iops: 100
         size: 1024
         percent_read: 0
         percent_random: 0
-simulation_time: 100000
+simulation_time: 10000000

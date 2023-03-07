@@ -215,13 +215,144 @@ std::vector<std::string> GetStrings(yaml_parser_t & parser) {
 	return retval;
 }
 
-Server * const ParseServer(yaml_parser_t & parser, Events & events, const uint64_t & t, const Servers & servers) {
+Shelf * const ParseShelf(yaml_parser_t & parser, Events & events, const Drives & drives) {
+	yaml_event_t e;
+	std::string key;
+	std::string value;
+	std::string name = "shelf";
+	bool expect_key = false;
+	uint16_t in_mapping = 0;
+	std::vector<std::string> drive_names;
+	while (true) {
+		if (!yaml_parser_parse(&parser, &e)) {
+		       	assert(0);
+	       	}
+	       	switch (e.type) {
+			case YAML_MAPPING_START_EVENT:
+				expect_key = true;
+				in_mapping += 1;
+				// std::cout << in_mapping << std::endl;
+				break;
+			case YAML_MAPPING_END_EVENT:
+				assert(in_mapping);
+				in_mapping--;
+				// std::cout << in_mapping << std::endl;
+			       	yaml_event_delete(&e);
+				{
+					Drives shelf_drives;
+					for (std::vector<std::string>::const_iterator i = drive_names.begin(); i != drive_names.end(); i++) {
+						// std::cout << *i << std::endl;
+						for (Drives::const_iterator j = drives.begin(); j != drives.end(); j++) {
+							if (!strcasecmp((*j)->name.c_str(), (*i).c_str())) {
+								shelf_drives.push_back(*j);
+								break;
+							}
+						}
+					}
+				       	return new Shelf(name, shelf_drives);
+				}
+				break;
+			case YAML_SCALAR_EVENT:
+				if (e.data.scalar.value) {
+				        if (expect_key) {
+						key = (char *)e.data.scalar.value;
+						// std::cout << "KEY " << key <<std::endl;
+						expect_key = false;
+					} else {
+						value = (char *)e.data.scalar.value;
+						// std::cout << "VALUE " << value <<std::endl;
+						expect_key = true;
+						if (!strcasecmp("name", key.c_str())) {
+						       	name = value;
+					       	} else {
+						       	assert(0);
+						}
+					}
+				}
+				break;		       	
+			case YAML_SEQUENCE_START_EVENT:
+			       	if (!strcasecmp("drives", key.c_str())) {
+					drive_names = GetStrings(parser);
+				} else {
+				       	assert(0);
+				}
+			       	expect_key = true;
+				break;
+			default:
+			       	std::cout << e.type << expect_key << std::endl;
+			       	assert(0);
+	       	}
+		yaml_event_delete(&e);
+	}
+	assert(0);
+	return NULL;
+}
+
+Drive * const ParseDrive(yaml_parser_t & parser, Events & events) {
+	yaml_event_t e;
+	std::string key;
+	std::string value;
+	std::string name = "drive";
+	std::string type = "drive";
+	bool expect_key = false;
+	uint16_t in_mapping = 0;
+	while (true) {
+		if (!yaml_parser_parse(&parser, &e)) {
+		       	assert(0);
+	       	}
+	       	switch (e.type) {
+			case YAML_MAPPING_START_EVENT:
+				expect_key = true;
+				in_mapping += 1;
+				// std::cout << in_mapping << std::endl;
+				break;
+			case YAML_MAPPING_END_EVENT:
+				assert(in_mapping);
+				in_mapping--;
+				// std::cout << in_mapping << std::endl;
+			       	yaml_event_delete(&e);
+				if (!strcasecmp("SSD_PM1733a", type.c_str())) {
+				       	return new SSD_PM1733a(name);
+				}
+				assert(0);
+			case YAML_SCALAR_EVENT:
+				if (e.data.scalar.value) {
+				       	// std::cout << e.data.scalar.value << " " << e.data.scalar.style << std::endl;
+				        if (expect_key) {
+						key = (char *)e.data.scalar.value;
+						// std::cout << "KEY " << key <<std::endl;
+						expect_key = false;
+					} else {
+						value = (char *)e.data.scalar.value;
+						// std::cout << "VALUE " << value <<std::endl;
+						expect_key = true;
+					       	if (!strcasecmp("name", key.c_str())) {
+						       	name = value;
+						} else if (!strcasecmp("type", key.c_str())) {
+						       	type = value;
+					       	} else {
+						       	assert(0);
+						}
+					}
+				}
+				break;		       	
+			default:
+			       	std::cout << e.type <<std::endl;
+			       	assert(0);
+	       	}
+		yaml_event_delete(&e);
+	}
+	assert(0);
+	return NULL;
+}
+
+RAID * const ParseRAID(yaml_parser_t & parser, Events & events, const Drives & drives) {
 	yaml_event_t e;
 	std::string key;
 	std::string value;
 	std::string name = "server";
 	std::string type = "server";
-	std::vector<std::string> server_names;
+	std::vector<std::string> drive_names;
 	bool expect_key = false;
 	uint16_t in_mapping = 0;
 	size_t stripe_width = 64 * 1024;
@@ -241,95 +372,92 @@ Server * const ParseServer(yaml_parser_t & parser, Events & events, const uint64
 				in_mapping--;
 				// std::cout << in_mapping << std::endl;
 			       	yaml_event_delete(&e);
-				if (!strcasecmp("SSD_PM1733a", type.c_str())) {
-				       	return new SSD_PM1733a(name, t);
-				}
 				if (!strcasecmp("RAID_0", type.c_str())) {
-					Servers raid_servers;
-					for (std::vector<std::string>::const_iterator i = server_names.begin(); i != server_names.end(); i++) {
+					Drives raid_drives;
+					for (std::vector<std::string>::const_iterator i = drive_names.begin(); i != drive_names.end(); i++) {
 						// std::cout << *i << std::endl;
-						for (Servers::const_iterator j = servers.begin(); j != servers.end(); j++) {
+						for (Drives::const_iterator j = drives.begin(); j != drives.end(); j++) {
 							if (!strcasecmp((*j)->name.c_str(), (*i).c_str())) {
-								raid_servers.push_back(*j);
+								raid_drives.push_back(*j);
 								break;
 							}
 						}
 					}
-				       	return new RAID_0(name, raid_servers, stripe_width, t);
+				       	return new RAID_0(name, raid_drives, stripe_width);
 				}
 				if (!strcasecmp("RAID_1", type.c_str())) {
-					Servers raid_servers;
-					for (std::vector<std::string>::const_iterator i = server_names.begin(); i != server_names.end(); i++) {
+					Drives raid_drives;
+					for (std::vector<std::string>::const_iterator i = drive_names.begin(); i != drive_names.end(); i++) {
 						// std::cout << *i << std::endl;
-						for (Servers::const_iterator j = servers.begin(); j != servers.end(); j++) {
+						for (Drives::const_iterator j = drives.begin(); j != drives.end(); j++) {
 							if (!strcasecmp((*j)->name.c_str(), (*i).c_str())) {
-								raid_servers.push_back(*j);
+								raid_drives.push_back(*j);
 								break;
 							}
 						}
 					}
-				       	return new RAID_1(name, raid_servers, t);
+				       	return new RAID_1(name, raid_drives);
 				}
 				if (!strcasecmp("RAID_5", type.c_str())) {
-					Servers raid_servers;
-					for (std::vector<std::string>::const_iterator i = server_names.begin(); i != server_names.end(); i++) {
+					Drives raid_drives;
+					for (std::vector<std::string>::const_iterator i = drive_names.begin(); i != drive_names.end(); i++) {
 						// std::cout << *i << std::endl;
-						for (Servers::const_iterator j = servers.begin(); j != servers.end(); j++) {
+						for (Drives::const_iterator j = drives.begin(); j != drives.end(); j++) {
 							if (!strcasecmp((*j)->name.c_str(), (*i).c_str())) {
-								raid_servers.push_back(*j);
+								raid_drives.push_back(*j);
 								break;
 							}
 						}
 					}
-				       	return new RAID_5(name, raid_servers, stripe_width, t);
+				       	return new RAID_5(name, raid_drives, stripe_width);
 				}
 				if (!strcasecmp("RAID_4", type.c_str())) {
-					Servers raid_servers;
-					for (std::vector<std::string>::const_iterator i = server_names.begin(); i != server_names.end(); i++) {
+					Drives raid_drives;
+					for (std::vector<std::string>::const_iterator i = drive_names.begin(); i != drive_names.end(); i++) {
 						// std::cout << *i << std::endl;
-						for (Servers::const_iterator j = servers.begin(); j != servers.end(); j++) {
+						for (Drives::const_iterator j = drives.begin(); j != drives.end(); j++) {
 							if (!strcasecmp((*j)->name.c_str(), (*i).c_str())) {
-								raid_servers.push_back(*j);
+								raid_drives.push_back(*j);
 								break;
 							}
 						}
 					}
-					Servers data_servers;
-					Servers parity_servers;
+					Drives data_drives;
+					Drives parity_drives;
 					size_t count = 0;
-					for (Servers::iterator i = raid_servers.begin(); i != raid_servers.end(); i++) {
+					for (Drives::iterator i = raid_drives.begin(); i != raid_drives.end(); i++) {
 						if (count < 1) {
-						       	parity_servers.push_back(*i);
+						       	parity_drives.push_back(*i);
 						} else {
-						       	data_servers.push_back(*i);
+						       	data_drives.push_back(*i);
 						}
 						count++;
 					}
-				       	return new RAID_4(name, data_servers, parity_servers, stripe_width, t);
+				       	return new RAID_4(name, data_drives, parity_drives, stripe_width);
 				}
 				if (!strcasecmp("RAID_DP", type.c_str())) {
-					Servers raid_servers;
-					for (std::vector<std::string>::const_iterator i = server_names.begin(); i != server_names.end(); i++) {
+					Drives raid_drives;
+					for (std::vector<std::string>::const_iterator i = drive_names.begin(); i != drive_names.end(); i++) {
 						// std::cout << *i << std::endl;
-						for (Servers::const_iterator j = servers.begin(); j != servers.end(); j++) {
+						for (Drives::const_iterator j = drives.begin(); j != drives.end(); j++) {
 							if (!strcasecmp((*j)->name.c_str(), (*i).c_str())) {
-								raid_servers.push_back(*j);
+								raid_drives.push_back(*j);
 								break;
 							}
 						}
 					}
-					Servers data_servers;
-					Servers parity_servers;
+					Drives data_drives;
+					Drives parity_drives;
 					size_t count = 0;
-					for (Servers::iterator i = raid_servers.begin(); i != raid_servers.end(); i++) {
+					for (Drives::iterator i = raid_drives.begin(); i != raid_drives.end(); i++) {
 						if (count < 2) {
-						       	parity_servers.push_back(*i);
+						       	parity_drives.push_back(*i);
 						} else {
-						       	data_servers.push_back(*i);
+						       	data_drives.push_back(*i);
 						}
 						count++;
 					}
-				       	return new RAID_DP(name, data_servers, parity_servers, stripe_width, t);
+				       	return new RAID_DP(name, data_drives, parity_drives, stripe_width);
 				}
 				assert(0);
 			case YAML_SCALAR_EVENT:
@@ -358,8 +486,8 @@ Server * const ParseServer(yaml_parser_t & parser, Events & events, const uint64
 				}
 				break;		       	
 			case YAML_SEQUENCE_START_EVENT:
-			       	if (!strcasecmp("servers", key.c_str())) {
-					server_names = GetStrings(parser);
+			       	if (!strcasecmp("drives", key.c_str())) {
+					drive_names = GetStrings(parser);
 				} else {
 				       	assert(0);
 				}
@@ -371,14 +499,16 @@ Server * const ParseServer(yaml_parser_t & parser, Events & events, const uint64
 	       	}
 		yaml_event_delete(&e);
 	}
+	assert(0);
+	return NULL;
 }
 
-Generator * const ParseGenerator(yaml_parser_t & parser, Events & events, Servers & servers) {
+Generator * const ParseGenerator(yaml_parser_t & parser, Events & events, RAIDs & raids) {
 	yaml_event_t e;
 	std::string key;
 	std::string value;
 	std::string name = "generator";
-	std::string server_name = "server";
+	std::string raid_name = "raid";
 	bool expect_key = false;
 	unsigned int qdepth = 0;
 	bool b2b = false;
@@ -419,12 +549,12 @@ Generator * const ParseGenerator(yaml_parser_t & parser, Events & events, Server
 					       	exit(1);
 					}
 				       	yaml_event_delete(&e);
-					for (Servers::const_iterator server = servers.begin(); server != servers.end(); server++) {
-						if (!strcasecmp(server_name.c_str(), (*server)->name.c_str())) {
+					for (RAIDs::const_iterator raid = raids.begin(); raid != raids.end(); raid++) {
+						if (!strcasecmp(raid_name.c_str(), (*raid)->name.c_str())) {
 						       	if (b2b) 
-								return new QueueGenerator(name, size, percent_read, percent_random, events, qdepth, *server);
+								return new QueueGenerator(name, size, percent_read, percent_random, events, qdepth, *raid);
 						       	else 
-								return new RateGenerator(name, size, percent_read, percent_random, events, ia_time, *server);
+								return new RateGenerator(name, size, percent_read, percent_random, events, ia_time, *raid);
 						}
 					}
 					assert(0);
@@ -455,8 +585,8 @@ Generator * const ParseGenerator(yaml_parser_t & parser, Events & events, Server
 						       	size = std::stoul(value);
 					       	} else if (!strcasecmp("name", key.c_str())) {
 						       	name = value;
-					       	} else if (!strcasecmp("server", key.c_str())) {
-						       	server_name = value;
+					       	} else if (!strcasecmp("raid", key.c_str())) {
+						       	raid_name = value;
 					       	} else if (!strcasecmp("iops", key.c_str())) {
 						       	b2b = false;
 						       	ia_time = (unsigned int)(1000000.0 / std::stod(value));
@@ -478,8 +608,10 @@ int main(int argc, char **argv) {
 
 	uint64_t t = 0;
 	Events events;
-	Servers servers;
+	RAIDs raids;
+	Drives drives;
 	Generators generators;
+	Shelves shelves;
 	uint64_t simulation_time = 0;
 
 	FILE * const config_fp = fopen("config.yaml", "r");
@@ -500,10 +632,13 @@ int main(int argc, char **argv) {
 				if (e.data.scalar.value) {
 				       	// std::cout << e.data.scalar.value << " " << e.data.scalar.style << std::endl;
 				       	if (!strcasecmp("generator", (char *)e.data.scalar.value)) {
-						if (servers.size()) generators.push_back(ParseGenerator(parser, events, servers));
-						else        assert(0);
-				       	} else if (!strcasecmp("server", (char *)e.data.scalar.value)) {
-					       	servers.push_back(ParseServer(parser, events, t, servers));
+						generators.push_back(ParseGenerator(parser, events, raids));
+				       	} else if (!strcasecmp("raid", (char *)e.data.scalar.value)) {
+					       	raids.push_back(ParseRAID(parser, events, drives));
+				       	} else if (!strcasecmp("drive", (char *)e.data.scalar.value)) {
+					       	drives.push_back(ParseDrive(parser, events));
+				       	} else if (!strcasecmp("shelf", (char *)e.data.scalar.value)) {
+					       	shelves.push_back(ParseShelf(parser, events, drives));
 				       	} else if (expect_value) {
 						if (!strcasecmp("simulation_time", key.c_str())) {
 						       	simulation_time = std::stoull((char *)e.data.scalar.value);
@@ -566,8 +701,17 @@ int main(int argc, char **argv) {
 	for (Generators::const_iterator generator = generators.begin(); generator != generators.end(); generator++) {
 	       	delete *generator;
 	}
-	for (Servers::const_iterator server = servers.begin(); server != servers.end(); server++) {
-	       	delete *server;
+	for (RAIDs::const_iterator raid = raids.begin(); raid != raids.end(); raid++) {
+		(*raid)->print(std::cout, t);
+	       	delete *raid;
+	}
+	for (Shelves::const_iterator shelf = shelves.begin(); shelf != shelves.end(); shelf++) {
+		(*shelf)->print(std::cout, t);
+	       	delete *shelf;
+	}
+	for (Drives::const_iterator drive = drives.begin(); drive != drives.end(); drive++) {
+		(*drive)->print(std::cout, t);
+	       	delete *drive;
 	}
 	return 0;
 }
