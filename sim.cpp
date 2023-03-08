@@ -266,10 +266,12 @@ Shelf * const ParseShelf(yaml_parser_t & parser, Events & events, const Drives &
 					for (Drives::const_iterator i = shelf_drives.begin();
 							i != shelf_drives.end(); i++) {
 						*retval = *i;
+						**i = retval;
 					}
 					for (IOModules::const_iterator i = shelf_ioms.begin();
 							i != shelf_ioms.end(); i++) {
 						*retval = *i;
+						**i = retval;
 					}
 					return retval;
 				}
@@ -581,12 +583,13 @@ IOModule * const ParseIOModule(yaml_parser_t & parser, Events & events) {
 	return NULL;
 }
 
-Generator * const ParseGenerator(yaml_parser_t & parser, Events & events, RAIDs & raids) {
+Generator * const ParseGenerator(yaml_parser_t & parser, Events & events, RAIDs & raids, IOModules & ioms) {
 	yaml_event_t e;
 	std::string key;
 	std::string value;
 	std::string name = "generator";
 	std::string raid_name = "raid";
+	std::string iom_name = "iom";
 	bool expect_key = false;
 	unsigned int qdepth = 0;
 	bool b2b = false;
@@ -629,10 +632,19 @@ Generator * const ParseGenerator(yaml_parser_t & parser, Events & events, RAIDs 
 				       	yaml_event_delete(&e);
 					for (RAIDs::const_iterator raid = raids.begin(); raid != raids.end(); raid++) {
 						if (!strcasecmp(raid_name.c_str(), (*raid)->name.c_str())) {
-						       	if (b2b) 
-								return new QueueGenerator(name, size, percent_read, percent_random, events, qdepth, *raid);
-						       	else 
-								return new RateGenerator(name, size, percent_read, percent_random, events, ia_time, *raid);
+						       	for (IOModules::const_iterator iom = ioms.begin(); iom != ioms.end();
+								       	iom++) {
+							       	if (!strcasecmp(iom_name.c_str(), (*iom)->name.c_str())) {
+								       	if (b2b) 
+										return new QueueGenerator(name, size,
+											       	percent_read, percent_random,
+											       	events, qdepth, *raid, *iom);
+								       	else 
+										return new RateGenerator(name, size,
+											       	percent_read, percent_random,
+											       	events, ia_time, *raid, *iom);
+								}
+							}
 						}
 					}
 					assert(0);
@@ -665,6 +677,8 @@ Generator * const ParseGenerator(yaml_parser_t & parser, Events & events, RAIDs 
 						       	name = value;
 					       	} else if (!strcasecmp("raid", key.c_str())) {
 						       	raid_name = value;
+					       	} else if (!strcasecmp("iom", key.c_str())) {
+						       	iom_name = value;
 					       	} else if (!strcasecmp("iops", key.c_str())) {
 						       	b2b = false;
 						       	ia_time = (unsigned int)(1000000.0 / std::stod(value));
@@ -711,7 +725,7 @@ int main(int argc, char **argv) {
 				if (e.data.scalar.value) {
 				       	// std::cout << e.data.scalar.value << " " << e.data.scalar.style << std::endl;
 				       	if (!strcasecmp("generator", (char *)e.data.scalar.value)) {
-						generators.push_back(ParseGenerator(parser, events, raids));
+						generators.push_back(ParseGenerator(parser, events, raids, ioms));
 				       	} else if (!strcasecmp("raid", (char *)e.data.scalar.value)) {
 					       	raids.insert(ParseRAID(parser, events, drives));
 				       	} else if (!strcasecmp("drive", (char *)e.data.scalar.value)) {

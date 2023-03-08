@@ -12,7 +12,7 @@ drive:
         type: ssd_pm1733a
 raid:
         name: raid
-        type: raid_dp
+        type: raid_4
         stripe_width: 512
         drives: 
           - ssd1
@@ -31,6 +31,7 @@ shelf:
           - ssd4
 generator:
         name: gen1
+        iom: iom1
         raid: raid
         queue_depth: 1
         # iops: 100

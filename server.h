@@ -62,6 +62,7 @@ typedef std::set<Drive *> Drives;
 class IOModule: public Server {
 	protected:
 		virtual uint64_t GetServiceTime(Task * const task);
+		Shelf *shelf;
 	public:
 		IOModule(const std::string & name);
 	       	virtual ~IOModule();
@@ -69,6 +70,8 @@ class IOModule: public Server {
 	       	virtual void EndTask(Task * const task, const uint64_t & t);
 		virtual size_t StripeSize() const;
 	       	virtual void print(std::ostream & o, const uint64_t & current_time);
+		IOModule & operator=(Shelf * const p_self);
+	       	Task * const Queue(Events & events, const uint64_t & t, Task * const task, Drive * const drive);
 };
 
 class IOModules: public std::set<IOModule *> {
@@ -87,7 +90,8 @@ class Shelf {
 		Shelf & operator=(Drive * const drive);
 		Shelf & operator=(IOModule * const iom);
 	       	void print(std::ostream & o, const uint64_t & current_time);
-	       	Task * const Queue(Events & events, const uint64_t & t, Task * const task, Drive * const drive);
+	       	Task * const Queue(Events & events, const uint64_t & t, Task * const task, IOModule * const iom,
+				Drive * const drive);
 };
 
 typedef std::set<Shelf *> Shelves;
@@ -109,6 +113,8 @@ class SSD_PM1733a: public Drive {
 class RAID: public Server {
 	public:
 		RAID(const std::string & name);
+	       	Task * const Queue(Events & events, const uint64_t & t, Task * const task,
+			       	IOModule * const iom, Drive * const drive) const;
 };
 
 typedef std::set<RAID *> RAIDs;
@@ -122,7 +128,7 @@ class RAID_0: public RAID {
 		const size_t stripe_width;
 		const std::string raid_level;
 		RAID_0(const std::string & name, Drives & p_drives, const size_t & p_stripe_width, const std::string & p_raid_level="0");
-	       	virtual Task * const Queue(Events & events, const uint64_t & t, Task * const task);
+	       	virtual Task * const Queue(Events & events, const uint64_t & t, Task * const task, IOModule * const iom);
 	       	virtual void UnQueue(Events & events, const uint64_t & t);
 		virtual ServerEvent * const ScheduleTaskEnd(Task * const task, const uint64_t & t);
 	       	virtual void EndTask(Task * const task, const uint64_t & t);
@@ -137,7 +143,7 @@ class RAID_1: public RAID_0 {
 		virtual uint64_t GetServiceTime(Task * const task);
 	public:
 		RAID_1(const std::string & name, Drives & p_drives);
-	       	virtual Task * const  Queue(Events & events, const uint64_t & t, Task * const task);
+	       	virtual Task * const  Queue(Events & events, const uint64_t & t, Task * const task, IOModule * const iom);
 	       	virtual void UnQueue(Events & events, const uint64_t & t);
 		virtual ServerEvent * const ScheduleTaskEnd(Task * const task, const uint64_t & t);
 		virtual size_t StripeSize() const;
@@ -150,7 +156,7 @@ class RAID_5: public RAID_0 {
 		virtual uint64_t GetServiceTime(Task * const task);
 	public:
 		RAID_5(const std::string & name, Drives & p_drives, const size_t & p_stripe_width);
-	       	virtual Task * const Queue(Events & events, const uint64_t & t, Task * const task);
+	       	virtual Task * const Queue(Events & events, const uint64_t & t, Task * const task, IOModule * const iom);
 	       	virtual void UnQueue(Events & events, const uint64_t & t);
 		virtual ServerEvent * const ScheduleTaskEnd(Task * const task, const uint64_t & t);
 		virtual size_t StripeSize() const;
@@ -167,7 +173,7 @@ class RAID_4: public RAID_0 {
 		const size_t stripe_width;
 		RAID_4(const std::string & name, Drives & data_drives, Drives & p_parity_drives, const size_t & p_stripe_width,
 			       	const std::string & p_raid_level="4");
-	       	virtual Task * const Queue(Events & events, const uint64_t & t, Task * const task);
+	       	virtual Task * const Queue(Events & events, const uint64_t & t, Task * const task, IOModule * const iom);
 	       	virtual void UnQueue(Events & events, const uint64_t & t);
 		virtual ServerEvent * const ScheduleTaskEnd(Task * const task, const uint64_t & t);
 	       	size_t StripeSize() const;
@@ -189,7 +195,7 @@ class RAID_DP: public RAID_4 {
 	public:
 		RAID_DP(const std::string & name, Drives & data_drives, Drives & parity_drives,
 			       	const size_t & p_stripe_width);
-	       	virtual Task * const Queue(Events & events, const uint64_t & t, Task * const task);
+	       	virtual Task * const Queue(Events & events, const uint64_t & t, Task * const task, IOModule * const iom);
 	       	virtual void EndTask(Task * const task, const uint64_t & t);
 	       	virtual ~RAID_DP();
 		virtual void print(std::ostream & o, const uint64_t & current_time);
