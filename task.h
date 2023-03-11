@@ -5,7 +5,7 @@
 #include <deque>
 #include <iostream>
 #include <cassert>
-#include <vector>
+#include <set>
 
 #define MAX_TASKQ (64 * 1024)
 
@@ -15,15 +15,18 @@ class Generator;
 class MasterTask;
 
 class Task {
+	protected:
+		std::set<Server *> servers;
 	public:
 		const uint64_t t;
 		const size_t size;
-		Server * const server;
 		Generator * const generator;
 		const bool is_read;
 		const bool is_random;
-		Task(const uint64_t & p_t, const size_t & p_size, const bool & pis_read, const bool & pis_random,
-			       	Server * const p_server, Generator * const p_generator);
+		Task(const uint64_t & p_t, const size_t & p_size, const bool & pis_read,
+			       	const bool & pis_random, Generator * const p_generator);
+		Task & operator=(Server * const p_server);
+		const std::set<Server *> & SERVERS() const { return servers; }
 		virtual ~Task() {
 		}
 };
@@ -31,11 +34,12 @@ class Task {
 std::ostream & operator<<(std::ostream & o, Task * const io);
 
 typedef std::deque<Task *> TaskQ;
-typedef std::vector<Task *> Tasks;
+typedef std::set<Task *> Tasks;
 
 std::ostream & operator<<(std::ostream & o, const TaskQ & taskq);
 std::ostream & operator<<(std::ostream & o, const Tasks & tasks);
 
+#if 0
 class SubTask: public Task {
 	protected:
 		MasterTask * mtask;
@@ -46,7 +50,7 @@ class SubTask: public Task {
 		SubTask & operator=(MasterTask * const p_mtask);
 };
 
-typedef std::vector<SubTask *> SubTasks;
+typedef std::set<SubTask *> SubTasks;
 
 class MasterTask: public Task {
 	protected:
@@ -56,5 +60,5 @@ class MasterTask: public Task {
 			       	Server * const server, Generator * const generator, SubTasks p_tasks);
 	       	size_t EndTask(Task * const task, const uint64_t & t);
 };
-
+#endif
 #endif // TASK_H

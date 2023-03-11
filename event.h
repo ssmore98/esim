@@ -5,13 +5,14 @@
 #include <cassert>
 #include <algorithm>
 #include <vector>
+#include <iostream>
 
 #define MAX_EVENTS (64 * 1024)
 
 class Server;
 class Generator;
 
-typedef enum {EvTyNone, EvTyStartTask, EvTyEndTask} EventType;
+typedef enum {EvTyNone, EvTyRateGenNextTask, EvTyServDiskEnd} EventType;
 
 class Event {
 	public:
@@ -22,6 +23,7 @@ class Event {
 		virtual Server * const GetServer() const = 0;
 		virtual Generator * const GetGenerator() const = 0;
 		virtual ~Event();
+		virtual void print(std::ostream & o);
 };
 
 class Events: public std::vector<Event *> {
@@ -35,6 +37,7 @@ class GeneratorEvent: public Event {
 		GeneratorEvent(const uint64_t & t, const EventType & type, Generator * const p_generator);
 		Generator * const GetGenerator() const;
 		Server * const GetServer() const;
+		virtual void print(std::ostream & o);
 };
 
 class ServerEvent: public Event {
@@ -43,6 +46,7 @@ class ServerEvent: public Event {
 		ServerEvent(const uint64_t & t, const EventType & type, Server * const p_server);
 		Server * const GetServer() const;
 		Generator * const GetGenerator() const;
+		virtual void print(std::ostream & o);
 };
 
 bool cmp(const Event * const e1, const Event * const e2);

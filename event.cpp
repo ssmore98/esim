@@ -2,6 +2,8 @@
 #define EVENT_CPP
 
 #include "event.h"
+#include "server.h"
+#include "generator.h"
 
 Event::Event(const uint64_t & p_t, const EventType & p_type): t(p_t), type(p_type) {
 }
@@ -27,6 +29,7 @@ Server * const GeneratorEvent::GetServer() const {
 }
 
 bool cmp(const Event * const e1, const Event * const e2)  { 
+	// std::cout << e1 << " " << e2 << std::endl;
 	return e1->t > e2->t;
 }
 
@@ -40,4 +43,36 @@ Generator * const ServerEvent::GetGenerator() const {
 	assert(0);
 	return NULL;
 }
+
+std::ostream & operator<<(std::ostream & o, const EventType & type) {
+	switch (type) {
+	       	case EvTyNone:
+			o << "None";
+			break;
+		case EvTyRateGenNextTask:
+			o << "Rate Generator Next Task";
+			break;
+		case EvTyServDiskEnd:
+			o << "Server Disk End";
+			break;
+		default:
+			assert(0);
+	}
+	return o;
+}
+
+void Event::print(std::ostream & o) {
+	o << "t=" << t << ' ' << type << std::endl;
+}
+
+void ServerEvent::print(std::ostream & o) {
+	o << "Server: " << server->name << ' ';
+	Event::print(o);
+}
+
+void GeneratorEvent::print(std::ostream & o) {
+	o << "Generator: " << generator->name << ' ';
+	Event::print(o);
+}
+
 #endif // EVENT_CPP

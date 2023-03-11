@@ -8,6 +8,9 @@
 #include "event.h"
 #include "generator.h"
 #include "task.h"
+#include "hba.h"
+#include "controller.h"
+#include "raid.h"
 
 std::ostream & operator<<(std::ostream & o, const yaml_event_type_t  & e) {
 	switch (e) {
@@ -215,6 +218,105 @@ std::vector<std::string> GetStrings(yaml_parser_t & parser) {
 	return retval;
 }
 
+Controller * const ParseController(yaml_parser_t & parser, Events & events, const Generators & generators, const HBAs & hbas) {
+	yaml_event_t e;
+	std::string key;
+	std::string value;
+	std::string name = "controller";
+	bool expect_key = false;
+	uint16_t in_mapping = 0;
+	std::vector<std::string> generator_names;
+	std::vector<std::string> hba_names;
+
+	while (true) {
+		if (!yaml_parser_parse(&parser, &e)) {
+		       	assert(0);
+	       	}
+	       	switch (e.type) {
+			case YAML_MAPPING_START_EVENT:
+				expect_key = true;
+				in_mapping += 1;
+				// std::cout << in_mapping << std::endl;
+				break;
+			case YAML_MAPPING_END_EVENT:
+				assert(in_mapping);
+				in_mapping--;
+				// std::cout << in_mapping << std::endl;
+			       	yaml_event_delete(&e);
+				{
+					Generators shelf_generators;
+					for (std::vector<std::string>::const_iterator i = generator_names.begin();
+						       	i != generator_names.end(); i++) {
+						// std::cout << *i << std::endl;
+						for (Generators::const_iterator j = generators.begin(); j != generators.end(); j++) {
+							if (!strcasecmp((*j)->name.c_str(), (*i).c_str())) {
+								shelf_generators.insert(*j);
+								break;
+							}
+						}
+					}
+					HBAs shelf_hbas;
+					for (std::vector<std::string>::const_iterator i = hba_names.begin();
+						       	i != hba_names.end(); i++) {
+						// std::cout << *i << std::endl;
+						for (HBAs::const_iterator j = hbas.begin();
+							       	j != hbas.end(); j++) {
+							if (!strcasecmp((*j)->name.c_str(), (*i).c_str())) {
+								shelf_hbas.insert(*j);
+								break;
+							}
+						}
+					}
+				       	Controller * const retval = new Controller(name);
+					for (Generators::const_iterator i = shelf_generators.begin();
+							i != shelf_generators.end(); i++) {
+						*retval = *i;
+					}
+					for (HBAs::const_iterator i = shelf_hbas.begin();
+							i != shelf_hbas.end(); i++) {
+						*retval = *i;
+					}
+					return retval;
+				}
+				break;
+			case YAML_SCALAR_EVENT:
+				if (e.data.scalar.value) {
+				        if (expect_key) {
+						key = (char *)e.data.scalar.value;
+						// std::cout << "KEY " << key <<std::endl;
+						expect_key = false;
+					} else {
+						value = (char *)e.data.scalar.value;
+						// std::cout << "VALUE " << value <<std::endl;
+						expect_key = true;
+						if (!strcasecmp("name", key.c_str())) {
+						       	name = value;
+					       	} else {
+						       	assert(0);
+						}
+					}
+				}
+				break;		       	
+			case YAML_SEQUENCE_START_EVENT:
+			       	if (!strcasecmp("generators", key.c_str())) {
+					generator_names = GetStrings(parser);
+				} else if (!strcasecmp("hbas", key.c_str())) {
+					hba_names = GetStrings(parser);
+				} else {
+				       	assert(0);
+				}
+			       	expect_key = true;
+				break;
+			default:
+			       	std::cout << e.type << expect_key << std::endl;
+			       	assert(0);
+	       	}
+		yaml_event_delete(&e);
+	}
+	assert(0);
+	return NULL;
+}
+
 Shelf * const ParseShelf(yaml_parser_t & parser, Events & events, const Drives & drives, const IOModules & ioms) {
 	yaml_event_t e;
 	std::string key;
@@ -411,6 +513,7 @@ RAID * const ParseRAID(yaml_parser_t & parser, Events & events, const Drives & d
 					}
 				       	return new RAID_0(name, raid_drives, stripe_width);
 				}
+#if 0
 				if (!strcasecmp("RAID_1", type.c_str())) {
 					Drives raid_drives;
 					for (std::vector<std::string>::const_iterator i = drive_names.begin(); i != drive_names.end(); i++) {
@@ -485,6 +588,7 @@ RAID * const ParseRAID(yaml_parser_t & parser, Events & events, const Drives & d
 					}
 				       	return new RAID_DP(name, data_drives, parity_drives, stripe_width);
 				}
+#endif
 				assert(0);
 			case YAML_SCALAR_EVENT:
 				if (e.data.scalar.value) {
@@ -528,6 +632,72 @@ RAID * const ParseRAID(yaml_parser_t & parser, Events & events, const Drives & d
 	assert(0);
 	return NULL;
 }
+
+HBA * const ParseHBA(yaml_parser_t & parser, Events & events, IOModules & ioms) {
+	yaml_event_t e;
+	std::string key;
+	std::string value;
+	uint16_t in_mapping = 0;
+	bool expect_key = false;
+	std::string name = "hba";
+	std::string iom_name = "iom";
+	while (true) {
+		if (!yaml_parser_parse(&parser, &e)) {
+		       	assert(0);
+	       	}
+	       	switch (e.type) {
+			case YAML_MAPPING_START_EVENT:
+				// std::cout << e.data.mapping_start.style << std::endl;
+				expect_key = true;
+				in_mapping += 1;
+				// std::cout << in_mapping << std::endl;
+				break;
+			case YAML_MAPPING_END_EVENT:
+				assert(in_mapping);
+				in_mapping--;
+				// std::cout << in_mapping << std::endl;
+				if (!in_mapping) {
+					IOModules shelf_ioms;
+					for (IOModules::const_iterator j = ioms.begin(); j != ioms.end(); j++) {
+					       	if (!strcasecmp((*j)->name.c_str(), iom_name.c_str())) {
+						       	HBA * const hba = new HBA(name);
+							*hba = *j;
+							return hba;
+					       	}
+				       	}
+					assert(0);
+				}
+				break;
+			case YAML_SCALAR_EVENT:
+				if (e.data.scalar.value) {
+				        if (expect_key) {
+						key = (char *)e.data.scalar.value;
+						// std::cout << "KEY " << key <<std::endl;
+						expect_key = false;
+					} else {
+						value = (char *)e.data.scalar.value;
+						// std::cout << "VALUE " << value <<std::endl;
+						expect_key = true;
+					       	if (!strcasecmp("name", key.c_str())) {
+						       	name = value;
+						} else if (!strcasecmp("iom", key.c_str())) {
+						       	iom_name = value;
+					       	} else {
+						       	assert(0);
+						}
+					}
+				}
+				break;
+		       	default:
+			       	std::cout << e.type <<std::endl;
+			       	assert(0);
+	       	}
+		yaml_event_delete(&e);
+       	}
+	assert(0);
+	return NULL;
+}
+
 
 IOModule * const ParseIOModule(yaml_parser_t & parser, Events & events) {
 	yaml_event_t e;
@@ -583,13 +753,12 @@ IOModule * const ParseIOModule(yaml_parser_t & parser, Events & events) {
 	return NULL;
 }
 
-Generator * const ParseGenerator(yaml_parser_t & parser, Events & events, RAIDs & raids, IOModules & ioms) {
+Generator * const ParseGenerator(yaml_parser_t & parser, RAIDs & raids) {
 	yaml_event_t e;
 	std::string key;
 	std::string value;
 	std::string name = "generator";
 	std::string raid_name = "raid";
-	std::string iom_name = "iom";
 	bool expect_key = false;
 	unsigned int qdepth = 0;
 	bool b2b = false;
@@ -632,19 +801,13 @@ Generator * const ParseGenerator(yaml_parser_t & parser, Events & events, RAIDs 
 				       	yaml_event_delete(&e);
 					for (RAIDs::const_iterator raid = raids.begin(); raid != raids.end(); raid++) {
 						if (!strcasecmp(raid_name.c_str(), (*raid)->name.c_str())) {
-						       	for (IOModules::const_iterator iom = ioms.begin(); iom != ioms.end();
-								       	iom++) {
-							       	if (!strcasecmp(iom_name.c_str(), (*iom)->name.c_str())) {
-								       	if (b2b) 
-										return new QueueGenerator(name, size,
-											       	percent_read, percent_random,
-											       	events, qdepth, *raid, *iom);
-								       	else 
-										return new RateGenerator(name, size,
-											       	percent_read, percent_random,
-											       	events, ia_time, *raid, *iom);
-								}
-							}
+						       	if (b2b) 
+								return new QueueGenerator(name, size, percent_read, percent_random,
+											       	qdepth, *raid);
+						       	else 
+								return new RateGenerator(name, size,
+									       	percent_read, percent_random,
+									       	ia_time, *raid);
 						}
 					}
 					assert(0);
@@ -677,8 +840,6 @@ Generator * const ParseGenerator(yaml_parser_t & parser, Events & events, RAIDs 
 						       	name = value;
 					       	} else if (!strcasecmp("raid", key.c_str())) {
 						       	raid_name = value;
-					       	} else if (!strcasecmp("iom", key.c_str())) {
-						       	iom_name = value;
 					       	} else if (!strcasecmp("iops", key.c_str())) {
 						       	b2b = false;
 						       	ia_time = (unsigned int)(1000000.0 / std::stod(value));
@@ -703,6 +864,8 @@ int main(int argc, char **argv) {
 	RAIDs raids;
 	Drives drives;
 	IOModules ioms;
+	HBAs hbas;
+	Controllers controllers;
 	Generators generators;
 	Shelves shelves;
 	uint64_t simulation_time = 0;
@@ -725,7 +888,7 @@ int main(int argc, char **argv) {
 				if (e.data.scalar.value) {
 				       	// std::cout << e.data.scalar.value << " " << e.data.scalar.style << std::endl;
 				       	if (!strcasecmp("generator", (char *)e.data.scalar.value)) {
-						generators.push_back(ParseGenerator(parser, events, raids, ioms));
+						generators.insert(ParseGenerator(parser, raids));
 				       	} else if (!strcasecmp("raid", (char *)e.data.scalar.value)) {
 					       	raids.insert(ParseRAID(parser, events, drives));
 				       	} else if (!strcasecmp("drive", (char *)e.data.scalar.value)) {
@@ -734,6 +897,10 @@ int main(int argc, char **argv) {
 					       	shelves.insert(ParseShelf(parser, events, drives, ioms));
 				       	} else if (!strcasecmp("iom", (char *)e.data.scalar.value)) {
 					       	ioms.insert(ParseIOModule(parser, events));
+				       	} else if (!strcasecmp("hba", (char *)e.data.scalar.value)) {
+					       	hbas.insert(ParseHBA(parser, events, ioms));
+				       	} else if (!strcasecmp("controller", (char *)e.data.scalar.value)) {
+					       	controllers.insert(ParseController(parser, events, generators, hbas));
 				       	} else if (expect_value) {
 						if (!strcasecmp("simulation_time", key.c_str())) {
 						       	simulation_time = std::stoull((char *)e.data.scalar.value);
@@ -770,6 +937,10 @@ int main(int argc, char **argv) {
 	       	exit(1);
        	}
 
+	for (Controllers::iterator i = controllers.begin(); i != controllers.end(); i++) {
+		(*i)->Begin(events, t);
+	}
+
 	while (t < simulation_time) {
 		if (0 == events.size()) {
 			std::cout << "Empty event heap.\n";
@@ -779,14 +950,57 @@ int main(int argc, char **argv) {
 		std::pop_heap(events.begin(), events.end(), cmp);
 	       	events.pop_back();
 		t = e->t;
+	       	// e->print(std::cout);
 		switch (e->type) {
-			case EvTyStartTask:
-				// std::cout << "StartTask " << t << std::endl;
-				e->GetGenerator()->StartTask(t);
+		       	case EvTyRateGenNextTask:
+				e->GetGenerator()->NextTask(events, t);
 				break;
-			case EvTyEndTask:
-				// std::cout << "EndTask " << t << std::endl;
-			       	e->GetServer()->UnQueue(events, t);
+		       	case EvTyServDiskEnd:
+				{
+				       	std::pair<Task *, Event *> finish_data = e->GetServer()->Finish(t, NULL);
+					Task * const task = finish_data.first;
+					assert(task);
+					if (finish_data.second) {
+					       	events.push_back(finish_data.second);
+					       	std::push_heap(events.begin(), events.end(), cmp);
+					}
+					for (IOModules::iterator iom = ioms.begin(); iom != ioms.end(); iom++) {
+						if (task->SERVERS().end() != task->SERVERS().find(*iom)) {
+							finish_data = (*iom)->Finish(t, task);
+							Task * const itask = finish_data.first;
+						       	assert(itask);
+						       	if (finish_data.second) {
+							       	events.push_back(finish_data.second);
+							       	std::push_heap(events.begin(), events.end(), cmp);
+						       	}
+						       	for (HBAs::iterator hba = hbas.begin(); hba != hbas.end(); hba++) {
+							       	if (itask->SERVERS().end() != itask->SERVERS().find(*hba)) {
+								       	finish_data = (*hba)->Finish(t, task);
+								       	Task * const htask = finish_data.first;
+								       	assert(htask);
+								       	if (finish_data.second) {
+									       	events.push_back(finish_data.second);
+									       	std::push_heap(events.begin(), events.end(), cmp);
+								       	}
+									for (Controllers::iterator ctrl = controllers.begin();
+											ctrl != controllers.end(); ctrl++) {
+										Task *ctask = (*ctrl)->EndTask(t, htask);
+										if (ctask) {
+											Task * const gtask =
+											       	ctask->generator->EndTask(ctask, t);
+											if (gtask) {
+											       	(*ctrl)->ScheduleTask(gtask->generator->raid,
+													       	gtask, events);
+											}
+										}
+									}
+									break;
+								}
+							}
+							break;
+						}
+					}
+				}
 				break;
 			default:
 				throw e;

@@ -4,53 +4,61 @@
 #include <random>
 
 #include "event.h"
+#include "task.h"
+#include "raid.h"
 
 class Generator {
 	private:
 		static uint16_t index;
 	protected:
-		Events & events;
+		// Events & events;
 	       	static std::default_random_engine generator;
 	       	std::exponential_distribution<double> rw_type_distr;
 	       	std::exponential_distribution<double> loc_distr;
 	       	uint64_t ia_time_sum;
 	       	uint64_t ia_time_count;
 	       	uint64_t last_task_time;
+		Tasks    pending;
 	public:
-		Server * const server;
-		Server * const iom;
+		// Server * const server;
+		// Server * const iom;
 		const uint16_t my_index;
 		const std::string name;
 		const uint16_t percent_read;
 		const uint16_t percent_random;
 		const size_t size;
+		RAID * const raid;
 		Generator(const std::string & p_name, const size_t & p_size, const uint16_t & p_percent_read,
-			       	const uint16_t & p_percent_random, Events & p_events, Server * const p_server, Server * const p_iom);
-	       	void IssueTask(const uint64_t & t);
-	       	virtual void StartTask(const uint64_t & t) = 0;
-	       	virtual void EndTask(const uint64_t & t) = 0;
+			       	const uint16_t & p_percent_random, RAID * const p_raid);
+		virtual Tasks Begin(Events & events, const uint64_t & t) = 0;
+	       	virtual Task * const NextTask(Events & events, const uint64_t & t) = 0;
+	       	virtual Task * const EndTask(Task * const task, const uint64_t & t) = 0;
 		virtual ~Generator();
 };
 
-typedef std::vector<Generator *> Generators;
+typedef std::set<Generator *> Generators;
 
 class RateGenerator : public Generator {
 	protected:
 	       	std::exponential_distribution<double> ia_time_distr;
 	public:
-		RateGenerator(const std::string & name, const size_t & p_size, const uint16_t & percent_read, const uint16_t & percent_random,
-			       	Events & events, const unsigned int & ia_time, Server * const server, Server * const iom);
-	       	void StartTask(const uint64_t & t);
-	       	void EndTask(const uint64_t & t);
+		RateGenerator(const std::string & name, const size_t & p_size, const uint16_t & percent_read,
+			       	const uint16_t & percent_random, const unsigned int & ia_time, RAID * const raid);
+		virtual Tasks Begin(Events & events, const uint64_t & t);
+	       	virtual Task * const NextTask(Events & events, const uint64_t & t);
+	       	virtual Task * const EndTask(Task * const task, const uint64_t & t);
 };
 
 class QueueGenerator : public Generator {
+	private:
+		Task * const CreateTask(const uint64_t & t);
 	public:
 	       	const unsigned int qdepth;
-		QueueGenerator(const std::string & name, const size_t & p_size, const uint16_t & percent_read, const uint16_t & percent_random,
-			       	Events & events, const unsigned int & p_qdepth, Server * const server, Server * const iom);
-	       	void StartTask(const uint64_t & t);
-	       	void EndTask(const uint64_t & t);
+		QueueGenerator(const std::string & name, const size_t & p_size, const uint16_t & percent_read,
+			       	const uint16_t & percent_random, const unsigned int & p_qdepth, RAID * const raid);
+		virtual Tasks Begin(Events & events, const uint64_t & t);
+	       	virtual Task * const EndTask(Task * const task, const uint64_t & t);
+	       	virtual Task * const NextTask(Events & events, const uint64_t & t);
 };
 
 #endif // GENERATOR_H
