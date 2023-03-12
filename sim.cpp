@@ -953,7 +953,11 @@ int main(int argc, char **argv) {
 	       	// e->print(std::cout);
 		switch (e->type) {
 		       	case EvTyRateGenNextTask:
-				e->GetGenerator()->NextTask(events, t);
+				{
+				       	Task * const task = e->GetGenerator()->NextTask(events, t);
+					assert(task);
+					e->GetGenerator()->GetController()->ScheduleTask(e->GetGenerator()->raid, task, events);
+				}
 				break;
 		       	case EvTyServDiskEnd:
 				{
@@ -1025,6 +1029,10 @@ int main(int argc, char **argv) {
 	for (IOModules::const_iterator iom = ioms.begin(); iom != ioms.end(); iom++) {
 		(*iom)->print(std::cout, t);
 	       	delete *iom;
+	}
+	for (HBAs::const_iterator hba = hbas.begin(); hba != hbas.end(); hba++) {
+		(*hba)->print(std::cout, t);
+	       	delete *hba;
 	}
 	return 0;
 }

@@ -7,6 +7,8 @@
 #include "task.h"
 #include "raid.h"
 
+class Controller;
+
 class Generator {
 	private:
 		static uint16_t index;
@@ -19,6 +21,7 @@ class Generator {
 	       	uint64_t ia_time_count;
 	       	uint64_t last_task_time;
 		Tasks    pending;
+		Controller *controller;
 	public:
 		// Server * const server;
 		// Server * const iom;
@@ -34,6 +37,8 @@ class Generator {
 	       	virtual Task * const NextTask(Events & events, const uint64_t & t) = 0;
 	       	virtual Task * const EndTask(Task * const task, const uint64_t & t) = 0;
 		virtual ~Generator();
+		Generator & operator=(Controller * const c);
+		Controller * const GetController() const { return controller; }
 };
 
 typedef std::set<Generator *> Generators;

@@ -3,6 +3,7 @@
 
 #include <chrono>
 #include <iostream>
+#include <iomanip>
 
 #include "server.h"
 #include "generator.h"
@@ -13,7 +14,7 @@ uint16_t Generator::index = 0;
 Generator::Generator(const std::string & p_name, const size_t & p_size, const uint16_t & p_percent_read,
 	       	const uint16_t & p_percent_random, RAID * const p_raid):
        	rw_type_distr((double)100), loc_distr((double)100), ia_time_sum(0), ia_time_count(0), last_task_time(0),
-	my_index(index), name(p_name), percent_read(p_percent_read),
+	controller(NULL), my_index(index), name(p_name), percent_read(p_percent_read),
        	percent_random(p_percent_random), size(p_size), raid(p_raid) {
 		index++;
 }
@@ -22,7 +23,7 @@ Generator::~Generator() {
        	std::cout << "GENERATOR " << name << " (" << my_index << ")" << std::endl;
        	// std::cout << "\tServer " << server->name << std::endl;
        	if (ia_time_count)
-	       	std::cout << "\tavIATime " << double(ia_time_sum) / double(ia_time_count * 1000 * 1000) << std::endl;
+	       	std::cout << "\tavIATime " << std::setiosflags(std::ios::fixed) << std::setprecision(6) << double(ia_time_sum) / double(ia_time_count * 1000 * 1000) << std::endl;
 }
 
 RateGenerator::RateGenerator(const std::string & name, const size_t & size, const uint16_t & percent_read,
@@ -50,6 +51,7 @@ Task * const RateGenerator::NextTask(Events & events, const uint64_t & t) {
        	GeneratorEvent * const e = new GeneratorEvent(t + this_ia_time, EvTyRateGenNextTask, this); 
 	events.push_back(e);
        	std::push_heap(events.begin(), events.end(), cmp);
+	pending.insert(task);
 	return task;
 }
 
@@ -100,6 +102,13 @@ Task * const QueueGenerator::CreateTask(const uint64_t & t) {
 Task * const QueueGenerator::NextTask(Events & events, const uint64_t & t) {
 	assert(0);
 	return NULL;
+}
+
+Generator & Generator::operator=(Controller * const c) {
+	assert(!controller);
+	assert(c);
+	controller = c;
+	return *this;
 }
 
 #endif // GENERATOR_CPP

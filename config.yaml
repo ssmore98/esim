@@ -41,8 +41,8 @@ shelf:
 generator:
         name: gen1
         raid: raid
-        # queue_depth: 1
-        iops: 100
+        queue_depth: 2
+        # iops: 100
         size: 1024
         percent_read: 0
         percent_random: 0

@@ -8,6 +8,7 @@ Controller::Controller(const std::string & p_name): name(p_name) {
 
 Controller & Controller::operator=(Generator * const generator) {
 	generators.insert(generator);
+	generator->operator=(this);
 	return *this;
 }
 

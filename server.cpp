@@ -19,11 +19,7 @@ std::ostream & operator<<(std::ostream & o, const Servers & servers) {
 }
 
 void Server::print(std::ostream & o, const uint64_t & current_time) {
-	if (metrics.N_TASKS()) {
-	       	o << "\tavLatency " << double(metrics.TASK_TIME()) / double(metrics.N_TASKS()) << std::endl;
-	       	o << "\tavServiceTime " << double(metrics.SVC_SUM()) / double(metrics.N_TASKS()) << std::endl;
-	       	o << "\tavQueueDepth " << double(metrics.QD_SUM()) / double(metrics.N_TASKS()) << std::endl;
-	}
+	o << metrics;
 }
 
 Server::Server(const std::string & p_name): my_index(index), name(p_name) {
@@ -131,9 +127,7 @@ SSD_PM1733a::~SSD_PM1733a() {
 
 void SSD_PM1733a::print(std::ostream & o, const uint64_t & current_time) {
 	o << "SSD_PM1733a " << name << " (" << my_index << ")" << std::endl;
-	o << "\tTotal I/Os " << metrics.N_TASKS() << std::endl;
 	if (current_time) o << "\tIOPS " << (metrics.N_TASKS() * 1000 * 1000) / current_time << std::endl;
-	o << "\tTotal Bytes " << metrics.SZ_SUM() << std::endl;
 	if (current_time) o << "\tMBPS " << (metrics.SZ_SUM() * 1000 * 1000) / (current_time * 1024 * 1024) << std::endl;
 	this->Server::print(o, current_time);
 }
@@ -247,11 +241,11 @@ static uint64_t sumqdsum(uint64_t acc, IOModule * const x) { return acc + x->MET
 void IOModules::print(std::ostream & o, const uint64_t & current_time) const {
 	if (std::accumulate(begin(), end(), 0, sumtasks)) {
 	       	o << "\tavLatency " << double(std::accumulate(begin(), end(), 0, sumtasktime)) /
-		       	double(std::accumulate(begin(), end(), 0, sumtasks)) << std::endl;
+		       	double(std::accumulate(begin(), end(), 0, sumtasks) * 1000 * 1000) << std::endl;
 	       	o << "\tavServiceTime " << double(std::accumulate(begin(), end(), 0, sumsvcsum)) /
-		       	double(std::accumulate(begin(), end(), 0, sumtasks)) << std::endl;
+		       	double(std::accumulate(begin(), end(), 0, sumtasks) * 1000 * 1000) << std::endl;
 	       	o << "\tavQueueDepth " << double(std::accumulate(begin(), end(), 0, sumqdsum)) /
-		       	double(std::accumulate(begin(), end(), 0, sumtasks)) << std::endl;
+		       	double(std::accumulate(begin(), end(), 0, sumtasks) * 1000 * 1000) << std::endl;
 	}
 }
 
@@ -283,6 +277,7 @@ ServerEvent *SSD_PM1733a::Submit(Task * const task) {
 	taskq.push_back(task);
 	if (1 == taskq.size()) {
 	       	const uint64_t xtime = GetServiceTime(task);
+		metrics.StartTask(task, 1, xtime);
 	       	return new ServerEvent(task->t + xtime, EvTyServDiskEnd, this);
 	}
 	return NULL;
@@ -293,10 +288,12 @@ std::pair<Task *, Event *> SSD_PM1733a::Finish(const uint64_t & t, Task * const 
 	assert(0 < taskq.size());
 	Task * const finished_task = taskq.front();
 	taskq.pop_front();
+       	metrics.EndTask(finished_task, t - finished_task->t);
 	Event * next_event = NULL;
 	if (0 < taskq.size()) {
 	       	Task * const next_task = taskq.front();
 	       	const uint64_t xtime = GetServiceTime(next_task);
+		metrics.StartTask(next_task, taskq.size(), xtime);
 	       	next_event = new ServerEvent(t + xtime, EvTyServDiskEnd, this);
 	}
 	return std::pair<Task *, Event *>(finished_task, next_event);
