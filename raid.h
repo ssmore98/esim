@@ -16,6 +16,7 @@ typedef std::map<Drive *, Tasks> TaskList;
 class RAID {
 	protected:
 	       	static std::default_random_engine generator;
+		Tasks tasks;
 		Metrics metrics;
 	public:
 		const std::string name;
@@ -44,34 +45,29 @@ class RAID_0: public RAID {
 		virtual void print(std::ostream & o, const uint64_t & current_time) const;
 };
 
-#if 0
 class RAID_1: public RAID_0 {
 	protected:
 	       	std::uniform_int_distribution<uint16_t> select_server_distr;
-		virtual uint64_t GetServiceTime(Task * const task);
 	public:
 		RAID_1(const std::string & name, Drives & p_drives);
-	       	virtual Task * const  Queue(Events & events, const uint64_t & t, Task * const task, IOModule * const iom);
-	       	virtual void UnQueue(Events & events, const uint64_t & t);
-		virtual ServerEvent * const ScheduleTaskEnd(Task * const task, const uint64_t & t);
 		virtual size_t StripeSize() const;
 	       	virtual ~RAID_1();
-		virtual void print(std::ostream & o, const uint64_t & current_time);
+		virtual void print(std::ostream & o, const uint64_t & current_time) const;
+	       	virtual TaskList Execute(Task * const task);
+	       	virtual void Finish(Task * const task);
 };
 
 class RAID_5: public RAID_0 {
-	protected:
-		virtual uint64_t GetServiceTime(Task * const task);
 	public:
 		RAID_5(const std::string & name, Drives & p_drives, const size_t & p_stripe_width);
-	       	virtual Task * const Queue(Events & events, const uint64_t & t, Task * const task, IOModule * const iom);
-	       	virtual void UnQueue(Events & events, const uint64_t & t);
-		virtual ServerEvent * const ScheduleTaskEnd(Task * const task, const uint64_t & t);
 		virtual size_t StripeSize() const;
 	       	virtual ~RAID_5();
-		virtual void print(std::ostream & o, const uint64_t & current_time);
+		virtual void print(std::ostream & o, const uint64_t & current_time) const;
+	       	virtual TaskList Execute(Task * const task);
+	       	virtual void Finish(Task * const task);
 };
 
+#if 0
 class RAID_4: public RAID_0 {
 	protected:
 	       	std::uniform_int_distribution<uint16_t> select_parity_distr;

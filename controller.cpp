@@ -20,6 +20,7 @@ Controller & Controller::operator=(HBA * const hba) {
 void Controller::ScheduleTask(RAID * const raid, Task * const task, Events & events) {
        	TaskList tlist = raid->Execute(task);
        	ControllerTaskList::iterator ictl = ctl.insert(ctl.end(), ControllerTaskList::value_type(task, Tasks()));
+       	metrics.StartTask(ctl.size(), 0, task->size);
        	for (TaskList::iterator k = tlist.begin(); k != tlist.end(); k++) {
 	       	Drive * const drive = k->first;
 	       	bool done = false;
@@ -70,12 +71,20 @@ Task * const Controller::EndTask(const uint64_t & t, Task * const task) {
 			       	// std::cout << "done!\n";
 				Task * const retval = i->first;
 				ctl.erase(i);
+			       	metrics.EndTask(0);
 				return retval;
 			}
 			return NULL;
 		}
 	}
 	assert(0);
+}
+
+void Controller::print(std::ostream & o, const uint64_t & current_time) const {
+	o << "Controller " << name << std::endl;
+	o << metrics;
+	if (current_time) o << "\tIOPS " << (metrics.N_TASKS() * 1000 * 1000) / current_time << std::endl;
+	if (current_time) o << "\tMBPS " << (metrics.SZ_SUM() * 1000 * 1000) / (current_time * 1024 * 1024) << std::endl;
 }
 
 #endif // CONTROLLER_CPP

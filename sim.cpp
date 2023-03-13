@@ -513,7 +513,6 @@ RAID * const ParseRAID(yaml_parser_t & parser, Events & events, const Drives & d
 					}
 				       	return new RAID_0(name, raid_drives, stripe_width);
 				}
-#if 0
 				if (!strcasecmp("RAID_1", type.c_str())) {
 					Drives raid_drives;
 					for (std::vector<std::string>::const_iterator i = drive_names.begin(); i != drive_names.end(); i++) {
@@ -540,6 +539,7 @@ RAID * const ParseRAID(yaml_parser_t & parser, Events & events, const Drives & d
 					}
 				       	return new RAID_5(name, raid_drives, stripe_width);
 				}
+#if 0
 				if (!strcasecmp("RAID_4", type.c_str())) {
 					Drives raid_drives;
 					for (std::vector<std::string>::const_iterator i = drive_names.begin(); i != drive_names.end(); i++) {
@@ -1033,6 +1033,10 @@ int main(int argc, char **argv) {
 	for (HBAs::const_iterator hba = hbas.begin(); hba != hbas.end(); hba++) {
 		(*hba)->print(std::cout, t);
 	       	delete *hba;
+	}
+	for (Controllers::const_iterator cntlr = controllers.begin(); cntlr != controllers.end(); cntlr++) {
+		(*cntlr)->print(std::cout, t);
+	       	delete *cntlr;
 	}
 	return 0;
 }

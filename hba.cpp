@@ -12,9 +12,9 @@ HBA & HBA::operator=(IOModule * const iom) {
 }
 
 ServerEvent *HBA::Submit(Task * const task) {
+	assert(task->SERVERS().end() != task->SERVERS().find(this));
 	taskq.push_back(task);
        	metrics.StartTask(taskq.size(), 0, task->size);
-	assert(task->SERVERS().end() != task->SERVERS().find(this));
 	for (IOModules::iterator iom = ioms.begin(); iom != ioms.end(); iom++) {
 		if (task->SERVERS().end() != task->SERVERS().find(*iom)) {
 			return (*iom)->Submit(task);

@@ -20,13 +20,9 @@ RAID_0::RAID_0(const std::string & name, Drives & p_drives, const size_t & p_str
 
 void RAID_0::print(std::ostream & o, const uint64_t & current_time) const {
 	o << "RAID-" << raid_level << " " << name << std::endl;
-	/*
-	o << "\tTotal I/Os " << n_tasks << std::endl;
-	if (current_time) o << "\tIOPS " << (n_tasks * 1000 * 1000) / current_time << std::endl;
-	o << "\tTotal Bytes " << sz_sum << std::endl;
-	if (current_time) o << "\tMBPS " << (sz_sum * 1000 * 1000) / (current_time * 1024 * 1024) << std::endl;
-	this->Server::print(o, current_time);
-	*/
+	o << metrics;
+	if (current_time) o << "\tIOPS " << (metrics.N_TASKS() * 1000 * 1000) / current_time << std::endl;
+	if (current_time) o << "\tMBPS " << (metrics.SZ_SUM() * 1000 * 1000) / (current_time * 1024 * 1024) << std::endl;
 }
 
 size_t RAID_0::StripeSize() const {
@@ -34,21 +30,11 @@ size_t RAID_0::StripeSize() const {
 }
 
 RAID_0::~RAID_0() {
-	/*
-	std::cout << "RAID_0 " << name << " (" << my_index << ") " << "(servers: " << servers << ")" << std::endl;
-	std::cout << "\tTotal I/Os " << n_tasks << std::endl;
-	if (current_time) std::cout << "\tIOPS " << (n_tasks * 1000 * 1000) / current_time << std::endl;
-	std::cout << "\tTotal Bytes " << sz_sum << std::endl;
-	if (current_time) std::cout << "\tMBPS " << (sz_sum * 1000 * 1000) / (current_time * 1024 * 1024) << std::endl;
-	if (n_tasks) {
-	       	std::cout << "\tavLatency " << double(task_time) / double(n_tasks) << std::endl;
-	       	// std::cout << "\tavServiceTime " << double(svc_sum) / double(n_tasks) << std::endl;
-	       	std::cout << "\tavQueueDepth " << double(qd_sum) / double(n_tasks) << std::endl;
-	}
-	*/
 }
 
 TaskList RAID_0::Execute(Task * const task) {
+	tasks.insert(task);
+       	metrics.StartTask(tasks.size(), 0, task->size);
 	TaskList retval;
        	Drives::iterator data_drive = drives.begin();
        	std::advance(data_drive, select_server_distr(generator));
@@ -60,14 +46,17 @@ TaskList RAID_0::Execute(Task * const task) {
 }
 
 void  RAID_0::Finish(Task * const task) {
+	Tasks::iterator itask = tasks.find(task);
+	assert(tasks.end() != itask);
+	tasks.erase(itask);
+       	metrics.EndTask(0);
 }
 
-#if 0
 RAID_1::RAID_1(const std::string & name, Drives & drives): RAID_0(name, drives, 0, "1"),
        	select_server_distr(0, drives.size() - 1) {
 }
 
-void RAID_1::print(std::ostream & o, const uint64_t & current_time) {
+void RAID_1::print(std::ostream & o, const uint64_t & current_time) const {
 	this->RAID_0::print(o, current_time);
 }
 
@@ -75,65 +64,46 @@ size_t RAID_1::StripeSize() const {
 	return 0;
 }
 
-Task * const RAID_1::Queue(Events & events, const uint64_t & t, Task * const task, IOModule * const iom) {
-	SubTasks stasks;
+TaskList RAID_1::Execute(Task * const task) {
+	tasks.insert(task);
+       	metrics.StartTask(tasks.size(), 0, task->size);
+	TaskList retval;
 	if (task->is_read) {
 		Drives::iterator i_drive = drives.begin();
 		std::advance(i_drive, select_server_distr(generator));
-		if (i_drive != drives.end()) {
-		       	SubTask * const stask = new SubTask(task->t, task->size, task->is_read, task->is_random, this, NULL);
-		       	stasks.insert(stask);
-		       	RAID::Queue(events, t, stask, iom, *i_drive);
-		} else {
-			assert(0);
-		}
+	       	Task * const ntask = new Task(task->t, task->size, true, task->is_random, task->generator);
+	       	Tasks ntasks;
+	       	ntasks.insert(ntask);
+	       	retval.insert(TaskList::value_type(*i_drive, ntasks));
+		return retval;
 	} else {
 		for (Drives::iterator i_drive = drives.begin(); i_drive != drives.end(); i_drive++) {
-		       	SubTask * const stask = new SubTask(task->t, task->size, task->is_read, task->is_random, this, NULL);
-		       	stasks.insert(stask);
-		       	RAID::Queue(events, t, stask, iom, *i_drive);
+		       	Task * const ntask = new Task(task->t, task->size, false, task->is_random, task->generator);
+		       	Tasks ntasks;
+		       	ntasks.insert(ntask);
+		       	retval.insert(TaskList::value_type(*i_drive, ntasks));
 		}
+		return retval;
 	}
-	MasterTask * const mtask = new MasterTask(task->t, task->size, task->is_read, task->is_random,
-		       	task->SERVER(), task->generator, stasks);
-	delete task;
-	Server::Queue(events, t, mtask);
-       	// std::cout << "A " << mtask << " IOQ " << taskq;
-	return mtask;
-}
-
-uint64_t RAID_1::GetServiceTime(Task * const task) {
 	assert(0);
+	return retval;
 }
 
-ServerEvent * const RAID_1::ScheduleTaskEnd(Task * const task, const uint64_t & t) {
-	return NULL;
-}
-
-void RAID_1::UnQueue(Events & events, const uint64_t & t) {
-	assert(0);
+void  RAID_1::Finish(Task * const task) {
+	Tasks::iterator itask = tasks.find(task);
+	assert(tasks.end() != itask);
+	tasks.erase(itask);
+       	metrics.EndTask(0);
 }
 
 RAID_1::~RAID_1() {
-	/*
-	std::cout << "RAID_1 " << name << " (" << my_index << ") " << "(servers: " << servers << ")" << std::endl;
-	std::cout << "\tTotal I/Os " << n_tasks << std::endl;
-	if (current_time) std::cout << "\tIOPS " << (n_tasks * 1000 * 1000) / current_time << std::endl;
-	std::cout << "\tTotal Bytes " << sz_sum << std::endl;
-	if (current_time) std::cout << "\tMBPS " << (sz_sum * 1000 * 1000) / (current_time * 1024 * 1024) << std::endl;
-	if (n_tasks) {
-	       	std::cout << "\tavLatency " << double(task_time) / double(n_tasks) << std::endl;
-	       	// std::cout << "\tavServiceTime " << double(svc_sum) / double(n_tasks) << std::endl;
-	       	std::cout << "\tavQueueDepth " << double(qd_sum) / double(n_tasks) << std::endl;
-	}
-	*/
 }
 
 RAID_5::RAID_5(const std::string & name, Drives & drives, const size_t & stripe_width):
        	RAID_0(name, drives, stripe_width, "5") {
 }
 
-void RAID_5::print(std::ostream & o, const uint64_t & current_time) {
+void RAID_5::print(std::ostream & o, const uint64_t & current_time) const {
 	this->RAID_0::print(o, current_time);
 }
 
@@ -156,6 +126,42 @@ RAID_5::~RAID_5() {
 	*/
 }
 
+TaskList RAID_5::Execute(Task * const task) {
+	if (task->is_read) return RAID_0::Execute(task);
+	tasks.insert(task);
+       	metrics.StartTask(tasks.size(), 0, task->size);
+	TaskList retval;
+       	Drives::iterator data_drive = drives.begin();
+       	std::advance(data_drive, select_server_distr(generator));
+	Drives::iterator parity_drive = drives.begin();
+	do {
+		parity_drive = drives.begin();
+		std::advance(parity_drive, select_server_distr(generator));
+	} while (parity_drive == data_drive);
+       	Tasks ntasks;
+	Task * ntask = new Task(task->t, task->size, true, task->is_random, task->generator);
+       	ntasks.insert(ntask);
+	ntask = new Task(task->t, task->size, false, task->is_random, task->generator);
+       	ntasks.insert(ntask);
+       	retval.insert(TaskList::value_type(*data_drive, ntasks));
+
+	ntasks.clear();
+	ntask = new Task(task->t, task->size, true, task->is_random, task->generator);
+       	ntasks.insert(ntask);
+	ntask = new Task(task->t, task->size, false, task->is_random, task->generator);
+       	ntasks.insert(ntask);
+       	retval.insert(TaskList::value_type(*parity_drive, ntasks));
+	return retval;
+}
+
+void  RAID_5::Finish(Task * const task) {
+	Tasks::iterator itask = tasks.find(task);
+	assert(tasks.end() != itask);
+	tasks.erase(itask);
+       	metrics.EndTask(0);
+}
+
+#if 0
 uint64_t RAID_5::GetServiceTime(Task * const task) {
 	assert(0);
 }
@@ -166,37 +172,6 @@ ServerEvent * const RAID_5::ScheduleTaskEnd(Task * const task, const uint64_t & 
 
 void RAID_5::UnQueue(Events & events, const uint64_t & t) {
 	assert(0);
-}
-
-Task * const RAID_5::Queue(Events & events, const uint64_t & t, Task * const task, IOModule * const iom) {
-	if (task->is_read) return RAID_0::Queue(events, t, task, iom);
-	SubTasks stasks;
-       	Drives::iterator data_drive = drives.begin();
-       	std::advance(data_drive, select_server_distr(generator));
-	Drives::iterator parity_drive = drives.begin();
-	do {
-		parity_drive = drives.begin();
-		std::advance(parity_drive, select_server_distr(generator));
-	} while (parity_drive == data_drive);
-	SubTask * stask = new SubTask(task->t, task->size, true, task->is_random, this, NULL);
-	stasks.insert(stask);
-       	RAID::Queue(events, t, stask, iom, *data_drive);
-	stask = new SubTask(task->t, task->size, true, task->is_random, this, NULL);
-	stasks.insert(stask);
-       	RAID::Queue(events, t, stask, iom, *parity_drive);
-
-	stask = new SubTask(task->t, task->size, false, task->is_random, this, NULL);
-	stasks.insert(stask);
-       	RAID::Queue(events, t, stask, iom, *data_drive);
-	stask = new SubTask(task->t, task->size, false, task->is_random, this, NULL);
-	stasks.insert(stask);
-       	RAID::Queue(events, t, stask, iom, *parity_drive);
-	MasterTask * const mtask = new MasterTask(task->t, task->size, task->is_read,
-		       	task->is_random, task->SERVER(), task->generator, stasks);
-	delete task;
-	Server::Queue(events, t, mtask);
-       	// std::cout << "A " << mtask << " IOQ " << taskq;
-	return mtask;
 }
 
 RAID_4::RAID_4(const std::string & name, Drives & data_drives, Drives & p_parity_drives, const size_t & p_stripe_width,

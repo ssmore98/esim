@@ -55,7 +55,6 @@ class IOModule: public Server {
 	public:
 		IOModule(const std::string & name);
 	       	virtual ~IOModule();
-		virtual size_t StripeSize() const;
 	       	virtual void print(std::ostream & o, const uint64_t & current_time);
 		IOModule & operator=(Shelf * const p_self);
 		Shelf * const SHELF() const { return shelf; }

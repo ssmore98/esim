@@ -12,7 +12,7 @@ drive:
         type: ssd_pm1733a
 raid:
         name: raid
-        type: raid_0
+        type: raid_5
         stripe_width: 512
         drives: 
           - ssd1
