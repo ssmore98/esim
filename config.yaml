@@ -53,4 +53,4 @@ controller:
         hbas:
           - hba1
           - hba2
-simulation_time: 10000000
+simulation_time: 1000000

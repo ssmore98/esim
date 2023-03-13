@@ -6,8 +6,6 @@
 #include "server.h"
 
 class HBA: public Server {
-	private:
-		uint16_t current_qdepth;
 	protected:
 		IOModules ioms;
 	public:

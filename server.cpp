@@ -277,7 +277,7 @@ ServerEvent *SSD_PM1733a::Submit(Task * const task) {
 	taskq.push_back(task);
 	if (1 == taskq.size()) {
 	       	const uint64_t xtime = GetServiceTime(task);
-		metrics.StartTask(task, 1, xtime);
+		metrics.StartTask(1, xtime, task->size);
 	       	return new ServerEvent(task->t + xtime, EvTyServDiskEnd, this);
 	}
 	return NULL;
@@ -288,12 +288,12 @@ std::pair<Task *, Event *> SSD_PM1733a::Finish(const uint64_t & t, Task * const 
 	assert(0 < taskq.size());
 	Task * const finished_task = taskq.front();
 	taskq.pop_front();
-       	metrics.EndTask(finished_task, t - finished_task->t);
+       	metrics.EndTask(t - finished_task->t);
 	Event * next_event = NULL;
 	if (0 < taskq.size()) {
 	       	Task * const next_task = taskq.front();
 	       	const uint64_t xtime = GetServiceTime(next_task);
-		metrics.StartTask(next_task, taskq.size(), xtime);
+		metrics.StartTask(taskq.size(), xtime, next_task->size);
 	       	next_event = new ServerEvent(t + xtime, EvTyServDiskEnd, this);
 	}
 	return std::pair<Task *, Event *>(finished_task, next_event);

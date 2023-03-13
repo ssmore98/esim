@@ -3,7 +3,7 @@
 
 #include "metrics.h"
 
-Metrics::Metrics(): n_tasks(0), task_time(0), qd_sum(0), svc_sum(0), sz_sum(0), task(NULL) {
+Metrics::Metrics(): n_tasks(0), task_time(0), qd_sum(0), svc_sum(0), sz_sum(0) {
 }
 
 const uint64_t & Metrics::TASK_TIME() const { return task_time; }
@@ -12,20 +12,15 @@ const uint64_t & Metrics::QD_SUM() const { return qd_sum; }
 const uint64_t & Metrics::N_TASKS() const { return n_tasks; }
 const uint64_t & Metrics::SZ_SUM() const { return sz_sum; }
 
-void Metrics::StartTask(Task * const ntask, const uint16_t & qd, const uint64_t & svc) {
-	assert(!task);
-	assert(ntask);
-	task = ntask;
+void Metrics::StartTask(const uint16_t & qd, const uint64_t & svc, const size_t & iosize) {
 	n_tasks++;
 	qd_sum += qd;
 	svc_sum += svc;
-	sz_sum += task->size;
+	sz_sum += iosize;
 }
 
-void Metrics::EndTask(Task * const ntask, const uint64_t & xt) {
-	assert(task == ntask);
+void Metrics::EndTask(const uint64_t & xt) {
 	task_time += xt;
-	task = NULL;
 }
 
 std::ostream & operator<<(std::ostream & o, const Metrics & metrics) {
