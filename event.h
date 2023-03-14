@@ -24,12 +24,13 @@ class Event {
 		virtual Server * const GetServer() const = 0;
 		virtual Generator * const GetGenerator() const = 0;
 		virtual ~Event();
-		virtual void print(std::ostream & o);
+		virtual void print(std::ostream & o) const;
 };
 
 class Events: public std::vector<Event *> {
 	public:
 	       	void push_back(Event * const e);
+	       	friend std::ostream & operator<<(std::ostream & o, const Events & events);
 };
 
 class GeneratorEvent: public Event {
@@ -38,7 +39,7 @@ class GeneratorEvent: public Event {
 		GeneratorEvent(const uint64_t & t, const EventType & type, Generator * const p_generator);
 		Generator * const GetGenerator() const;
 		Server * const GetServer() const;
-		virtual void print(std::ostream & o);
+		virtual void print(std::ostream & o) const;
 };
 
 class ServerEvent: public Event {
@@ -47,7 +48,7 @@ class ServerEvent: public Event {
 		ServerEvent(const uint64_t & t, const EventType & type, Server * const p_server);
 		Server * const GetServer() const;
 		Generator * const GetGenerator() const;
-		virtual void print(std::ostream & o);
+		virtual void print(std::ostream & o) const;
 };
 
 typedef std::set<ServerEvent *> ServerEvents;

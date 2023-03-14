@@ -29,10 +29,12 @@ hba:
         name: hba1
         iom: iom1
         max_iops: 1000000
+        mbps: 1000
 hba:
         name: hba2
         iom: iom2
         max_iops: 1000000
+        mbps: 1000
 shelf:
         ioms:
           - iom1
@@ -70,4 +72,9 @@ controller:
           - gen2
         hbas:
           - hba2
+filer:
+        name: filer1
+        controllers: 
+          - controller1
+          - controller2
 simulation_time: 1000000

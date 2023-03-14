@@ -758,6 +758,78 @@ IOModule * const ParseIOModule(yaml_parser_t & parser, Events & events) {
 	return NULL;
 }
 
+Filer * const ParseFiler(yaml_parser_t & parser, Controllers & controllers) {
+	yaml_event_t e;
+	std::vector<std::string> ctrl_names;
+	std::string name = "generator";
+	uint16_t in_mapping = 0;
+	bool expect_key = false;
+	std::string key;
+	std::string value;
+	while (true) {
+		if (!yaml_parser_parse(&parser, &e)) {
+		       	assert(0);
+	       	}
+	       	switch (e.type) {
+			case YAML_MAPPING_START_EVENT:
+				// std::cout << e.data.mapping_start.style << std::endl;
+				expect_key = true;
+				in_mapping += 1;
+				// std::cout << in_mapping << std::endl;
+				break;
+			case YAML_SCALAR_EVENT:
+				if (e.data.scalar.value) {
+				       	// std::cout << e.data.scalar.value << " " << e.data.scalar.style << std::endl;
+				        if (expect_key) {
+						key = (char *)e.data.scalar.value;
+						// std::cout << "KEY " << key <<std::endl;
+						expect_key = false;
+					} else {
+						value = (char *)e.data.scalar.value;
+						// std::cout << "VALUE " << value <<std::endl;
+						expect_key = true;
+					       	if (!strcasecmp("name", key.c_str())) {
+						       	name = value;
+					       	} else {
+						       	assert(0);
+						}
+					}
+				}
+				break;
+			case YAML_SEQUENCE_START_EVENT:
+			       	if (!strcasecmp("controllers", key.c_str())) {
+				       	ctrl_names = GetStrings(parser);
+				} else {
+				       	assert(0);
+				}
+			       	expect_key = true;
+				break;
+			case YAML_MAPPING_END_EVENT:
+				{
+				       	Filer * const filer = new Filer(name);
+					for (std::vector<std::string>::const_iterator i = ctrl_names.begin(); i != ctrl_names.end(); i++) {
+						// std::cout << *i << std::endl;
+						for (Controllers::const_iterator j = controllers.begin(); j != controllers.end(); j++) {
+							if (!strcasecmp((*j)->name.c_str(), (*i).c_str())) {
+								*filer = *j;
+								break;
+							}
+						}
+					}
+				       	yaml_event_delete(&e);
+				       	return filer;
+				}
+				break;
+		       	default:
+			       	std::cout << e.type <<std::endl;
+			       	assert(0);
+	       	}
+		yaml_event_delete(&e);
+	}
+	assert(0);
+	return NULL;
+}
+
 Generator * const ParseGenerator(yaml_parser_t & parser, RAIDs & raids) {
 	yaml_event_t e;
 	std::string key;
@@ -860,6 +932,8 @@ Generator * const ParseGenerator(yaml_parser_t & parser, RAIDs & raids) {
 	       	}
 		yaml_event_delete(&e);
        	}
+	assert(0);
+	return NULL;
 }
 
 int main(int argc, char **argv) {
@@ -873,6 +947,7 @@ int main(int argc, char **argv) {
 	Controllers controllers;
 	Generators generators;
 	Shelves shelves;
+	Filers filers;
 	uint64_t simulation_time = 0;
 
 	FILE * const config_fp = fopen("config.yaml", "r");
@@ -906,6 +981,8 @@ int main(int argc, char **argv) {
 					       	hbas.insert(ParseHBA(parser, events, ioms));
 				       	} else if (!strcasecmp("controller", (char *)e.data.scalar.value)) {
 					       	controllers.insert(ParseController(parser, events, generators, hbas));
+				       	} else if (!strcasecmp("filer", (char *)e.data.scalar.value)) {
+					       	filers.insert(ParseFiler(parser, controllers));
 				       	} else if (expect_value) {
 						if (!strcasecmp("simulation_time", key.c_str())) {
 						       	simulation_time = std::stoull((char *)e.data.scalar.value);
@@ -949,17 +1026,20 @@ int main(int argc, char **argv) {
 	while (t < simulation_time) {
 		if (0 == events.size()) {
 			std::cout << "Empty event heap.\n";
+			exit(0);
 			break;
 		}
 		Event * const e = events.front();
 		std::pop_heap(events.begin(), events.end(), cmp);
 	       	events.pop_back();
 		t = e->t;
-	       	// e->print(std::cout);
+		// e->print(std::cout);
+		// std::cout << " " << events << std::endl;
 		switch (e->type) {
 		       	case EvTyIOMFinProc:
 				{
 				       	ServerEvents ses = e->GetServer()->Start(t);
+					// std::cout << e->GetServer()->name << std::endl;
 					for (ServerEvents::iterator i = ses.begin(); i != ses.end(); i++) {
 					       	events.push_back(*i);
 					       	std::push_heap(events.begin(), events.end(), cmp);
@@ -1014,12 +1094,18 @@ int main(int argc, char **argv) {
 										if ((*ctrl)->HBAS().end() != (*ctrl)->HBAS().find(*hba)) {
 										       	Task *ctask = (*ctrl)->EndTask(t, htask);
 										       	if (ctask) {
-											       	Task * const gtask =
-												       	ctask->generator->EndTask(ctask, t);
-											       	if (gtask) {
-												       	(*ctrl)->ScheduleTask(gtask->generator->raid,
-														       	gtask, events, t);
-											       	}
+												// std::cout << ctask << std::endl;
+												Generator * const generator = ctask->generator;
+												RAID * const raid = generator->raid;
+												Tasks tasks = raid->Finish(t, ctask);
+												// std::cout << tasks << std::endl;
+												for (Tasks::iterator i = tasks.begin(); i != tasks.end(); i++) {
+												       	Task * const gtask = (*i)->generator->EndTask(*i, t);
+												       	if (gtask) {
+													       	(*ctrl)->ScheduleTask(gtask->generator->raid,
+															       	gtask, events, t);
+												       	}
+												}
 										       	}
 										}
 									}
@@ -1062,6 +1148,10 @@ int main(int argc, char **argv) {
 	for (Controllers::const_iterator cntlr = controllers.begin(); cntlr != controllers.end(); cntlr++) {
 		(*cntlr)->print(std::cout, t);
 	       	delete *cntlr;
+	}
+	for (Filers::const_iterator filer = filers.begin(); filer != filers.end(); filer++) {
+		(*filer)->print(std::cout, t);
+	       	delete *filer;
 	}
 	return 0;
 }

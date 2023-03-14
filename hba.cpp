@@ -28,7 +28,6 @@ ServerEvents HBA::Start(const uint64_t & t) {
 	assert(0 < taskq.size());
 	Task * const finished_task = taskq.front();
 	taskq.pop_front();
-       	metrics.EndTask(t - finished_task->t);
        	ServerEvents retval;
 	if (0 < taskq.size()) {
 	       	retval.insert(new ServerEvent(t + service_time, EvTyHBAFinProc, this));
@@ -51,6 +50,7 @@ std::pair<Task *, Event *> HBA::Finish(const uint64_t & t, Task * const task) {
 	Tasks::iterator itask = pending_tasks.find(task);
 	assert(pending_tasks.end() != itask);
        	pending_tasks.erase(itask);
+       	metrics.EndTask(t - task->t);
        	return std::pair<Task *, Event *>(task, NULL);
 }
 

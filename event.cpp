@@ -55,24 +55,45 @@ std::ostream & operator<<(std::ostream & o, const EventType & type) {
 		case EvTyServDiskEnd:
 			o << "Server Disk End";
 			break;
+		case EvTyHBAFinProc:
+			o << "HBA Finish Processing";
+			break;
+		case EvTyIOMFinProc:
+			o << "IO Module Finish Processing";
+			break;
 		default:
 			assert(0);
 	}
 	return o;
 }
 
-void Event::print(std::ostream & o) {
-	o << "t=" << t << ' ' << type << std::endl;
+void Event::print(std::ostream & o)  const{
+	o << "t=" << t << ' ' << type;
 }
 
-void ServerEvent::print(std::ostream & o) {
+void ServerEvent::print(std::ostream & o) const {
+	Event::print(o);
 	o << "Server: " << server->name << ' ';
-	Event::print(o);
 }
 
-void GeneratorEvent::print(std::ostream & o) {
-	o << "Generator: " << generator->name << ' ';
+void GeneratorEvent::print(std::ostream & o) const {
 	Event::print(o);
+	o << "Generator: " << generator->name << ' ';
+}
+
+std::ostream & operator<<(std::ostream & o, const Event & event) {
+       	event.print(o);
+	return o;
+}
+
+std::ostream & operator<<(std::ostream & o, const Events & events) {
+	o << "(";
+	for (Events::const_iterator i = events.begin(); i != events.end(); i++) {
+		(*i)->print(o);
+	       	o << ",";
+	}
+	o << ")";
+	return o;
 }
 
 #endif // EVENT_CPP

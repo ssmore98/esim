@@ -6,6 +6,9 @@
 Controller::Controller(const std::string & p_name): name(p_name) {
 }
 
+Filer::Filer(const std::string & p_name): name(p_name) {
+}
+
 Controller & Controller::operator=(Generator * const generator) {
 	generators.insert(generator);
 	generator->operator=(this);
@@ -17,18 +20,25 @@ Controller & Controller::operator=(HBA * const hba) {
 	return *this;
 }
 
+Filer & Filer::operator=(Controller * const controller) {
+	Controllers::insert(controller);
+	return *this;
+}
+
 void Controller::ScheduleTask(RAID * const raid, Task * const task, Events & events, const uint64_t & current_time) {
-	std::cout << task << std::endl;
+	// std::cout << task << " " << events << std::endl;
        	ControllerTaskList::iterator ictl = ctl.insert(ctl.end(), ControllerTaskList::value_type(task, Tasks()));
        	metrics.StartTask(ctl.size(), 0, task->size);
        	TaskList tlist = raid->Execute(task);
+	/*
 	if (0 == tlist.size()) {
-	       	ctl.erase(ictl);
+		ctl.erase(ictl);
 	       	metrics.EndTask(0);
-		Task * const next_task = task->generator->EndTask(task, current_time);
-		if (next_task) ScheduleTask(raid, next_task, events, current_time);
+	       	Task * next_task = task->generator->EndTask(task, current_time);
+		ScheduleTask(raid, next_task, events, current_time);
 		return;
 	}
+	*/
        	for (TaskList::iterator k = tlist.begin(); k != tlist.end(); k++) {
 	       	Drive * const drive = k->first;
 	       	bool done = false;
@@ -72,7 +82,7 @@ void Controller::Begin(Events & events, const uint64_t & t) {
 }
 
 Task * const Controller::EndTask(const uint64_t & t, Task * const task) {
-	// std::cout << task << std::endl;
+	// std::cout << task << ' ' << ctl << std::endl;
 	for (ControllerTaskList::iterator i = ctl.begin(); i != ctl.end(); i++) {
 		if (i->second.end() != i->second.find(task)) {
 			// std::cout << "found!\n";
@@ -81,7 +91,7 @@ Task * const Controller::EndTask(const uint64_t & t, Task * const task) {
 			       	// std::cout << "done!\n";
 				Task * const retval = i->first;
 				ctl.erase(i);
-			       	metrics.EndTask(0);
+			       	metrics.EndTask(t - task->t);
 				return retval;
 			}
 			return NULL;
@@ -101,6 +111,28 @@ void Controller::print(std::ostream & o, const uint64_t & current_time) const {
 	if (current_time) o << "\tIOPS " << (metrics.N_TASKS() * 1000 * 1000) / current_time << std::endl;
 	if (current_time) o << "\tMBPS " << (metrics.SZ_SUM() * 1000 * 1000) / (current_time * 1024 * 1024) << std::endl;
 	o << metrics;
+}
+
+std::ostream & operator<<(std::ostream & o, const ControllerTaskList & ctl) {
+	for (ControllerTaskList::const_iterator i = ctl.begin(); i != ctl.end(); i++) {
+		o << "Master(" << i->first << ")";
+	}
+	return o;
+}
+
+static std::string concatc(std::string & a, Controller * b) { return b->name + " " + a; }
+static uint64_t sumtasks(uint64_t acc, Controller * const x) { return acc + x->METRICS().N_TASKS(); }
+static uint64_t sumszs(uint64_t acc, Controller * const x) { return acc + x->METRICS().SZ_SUM(); }
+void Filer::print(std::ostream & o, const uint64_t & current_time) const {
+	o << "Filer " << name <<
+	       	": Controllers(" << std::accumulate(Controllers::begin(), Controllers::end(), std::string(""), concatc) << ")" <<
+	       	std::endl;
+	if (current_time) o << "\tIOPS " << (std::accumulate<Controllers::iterator, uint64_t>(Controllers::begin(), Controllers::end(), 0, sumtasks)
+		       	* 1000 * 1000) / current_time << std::endl;
+	if (current_time) o << "\tMBPS " << (std::accumulate<Controllers::iterator, uint64_t>(Controllers::begin(), Controllers::end(), 0, sumszs) * 1000 * 1000)
+	       	/ (current_time * 1024 * 1024) << std::endl;
+	o << "\tTotal I/Os " << std::accumulate<Controllers::iterator, uint64_t>(Controllers::begin(), Controllers::end(), 0, sumtasks) << std::endl;
+	o << "\tTotal Bytes " << std::accumulate<Controllers::iterator, uint64_t>(Controllers::begin(), Controllers::end(), 0, sumszs) << std::endl;
 }
 
 #endif // CONTROLLER_CPP

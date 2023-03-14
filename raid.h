@@ -23,7 +23,7 @@ class RAID {
 		RAID(const std::string & name);
 		virtual ~RAID();
 	       	virtual TaskList Execute(Task * const task) = 0;
-	       	virtual void Finish(Task * const task) = 0;
+	       	virtual Tasks Finish(const uint64_t & current_time, Task * const task) = 0;
 		virtual size_t StripeSize() const = 0;
 		virtual void print(std::ostream & o, const uint64_t & current_time) const = 0;
 };
@@ -40,7 +40,7 @@ class RAID_0: public RAID {
 		RAID_0(const std::string & name, Drives & p_drives, const size_t & p_stripe_width, const std::string & p_raid_level="0");
 	       	virtual ~RAID_0();
 	       	virtual TaskList Execute(Task * const task);
-	       	virtual void Finish(Task * const task);
+	       	virtual Tasks Finish(const uint64_t & current_time, Task * const task);
 		virtual size_t StripeSize() const;
 		virtual void print(std::ostream & o, const uint64_t & current_time) const;
 };
@@ -54,7 +54,7 @@ class RAID_1: public RAID_0 {
 	       	virtual ~RAID_1();
 		virtual void print(std::ostream & o, const uint64_t & current_time) const;
 	       	virtual TaskList Execute(Task * const task);
-	       	virtual void Finish(Task * const task);
+	       	virtual Tasks Finish(const uint64_t & current_time, Task * const task);
 };
 
 class RAID_5: public RAID_0 {
@@ -64,7 +64,7 @@ class RAID_5: public RAID_0 {
 	       	virtual ~RAID_5();
 		virtual void print(std::ostream & o, const uint64_t & current_time) const;
 	       	virtual TaskList Execute(Task * const task);
-	       	virtual void Finish(Task * const task);
+	       	virtual Tasks Finish(const uint64_t & current_time, Task * const task);
 };
 
 class RAID_4: public RAID_0 {
@@ -78,7 +78,7 @@ class RAID_4: public RAID_0 {
 	       	virtual ~RAID_4();
 		virtual void print(std::ostream & o, const uint64_t & current_time);
 	       	virtual TaskList Execute(Task * const task);
-	       	virtual void Finish(Task * const task);
+	       	virtual Tasks Finish(const uint64_t & current_time, Task * const task);
 };
 
 typedef std::map<Task * const, Tasks> ConsistencyPoints;
@@ -98,7 +98,7 @@ class RAID_DP: public RAID_4 {
 	       	virtual ~RAID_DP();
 		virtual void print(std::ostream & o, const uint64_t & current_time);
 	       	virtual TaskList Execute(Task * const task);
-	       	virtual void Finish(Task * const task);
+	       	virtual Tasks Finish(const uint64_t & current_time, Task * const task);
 };
 
 #endif // RAID_H

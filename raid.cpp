@@ -47,11 +47,14 @@ TaskList RAID_0::Execute(Task * const task) {
 	return retval;
 }
 
-void  RAID_0::Finish(Task * const task) {
+Tasks  RAID_0::Finish(const uint64_t & current_time, Task * const task) {
 	Tasks::iterator itask = tasks.find(task);
 	assert(tasks.end() != itask);
 	tasks.erase(itask);
        	metrics.EndTask(0);
+	Tasks retval;
+	retval.insert(task);
+	return retval;
 }
 
 RAID_1::RAID_1(const std::string & name, Drives & drives): RAID_0(name, drives, 0, "1"),
@@ -91,11 +94,14 @@ TaskList RAID_1::Execute(Task * const task) {
 	return retval;
 }
 
-void  RAID_1::Finish(Task * const task) {
+Tasks  RAID_1::Finish(const uint64_t & current_time, Task * const task) {
 	Tasks::iterator itask = tasks.find(task);
 	assert(tasks.end() != itask);
 	tasks.erase(itask);
        	metrics.EndTask(0);
+	Tasks retval;
+	retval.insert(task);
+	return retval;
 }
 
 RAID_1::~RAID_1() {
@@ -144,11 +150,14 @@ TaskList RAID_5::Execute(Task * const task) {
 	return retval;
 }
 
-void  RAID_5::Finish(Task * const task) {
+Tasks  RAID_5::Finish(const uint64_t & current_time, Task * const task) {
 	Tasks::iterator itask = tasks.find(task);
 	assert(tasks.end() != itask);
 	tasks.erase(itask);
        	metrics.EndTask(0);
+	Tasks retval;
+	retval.insert(task);
+	return retval;
 }
 
 RAID_4::RAID_4(const std::string & name, Drives & data_drives, Drives & p_parity_drives, const size_t & stripe_width,
@@ -193,11 +202,14 @@ TaskList RAID_4::Execute(Task * const task) {
 	return retval;
 }
 
-void  RAID_4::Finish(Task * const task) {
+Tasks  RAID_4::Finish(const uint64_t & current_time, Task * const task) {
 	Tasks::iterator itask = tasks.find(task);
 	assert(tasks.end() != itask);
 	tasks.erase(itask);
        	metrics.EndTask(0);
+	Tasks retval;
+	retval.insert(task);
+	return retval;
 }
 
 RAID_DP::RAID_DP(const std::string & name, Drives & data_drives, Drives & parity_drives,
@@ -218,6 +230,7 @@ TaskList RAID_DP::Execute(Task * const task) {
        	metrics.StartTask(tasks.size(), 0, task->size);
 	// std::cout << StripeSize() << " " << GetAccWriteSize() << std::endl;
 	// std::cout << task << " " << write_tasks;
+	assert(write_tasks.end() == write_tasks.find(task));
 	write_tasks.insert(task);
 	// std::cout << task << " " << write_tasks;
 	// std::cout << StripeSize() << " " << GetAccWriteSize() << std::endl;
@@ -240,22 +253,28 @@ TaskList RAID_DP::Execute(Task * const task) {
 		write_tasks.clear();
 	       	return retval;
 	}
-       	metrics.EndTask(0);
 	return TaskList();
 }
 
-void RAID_DP::Finish(Task * const task) {
+Tasks RAID_DP::Finish(const uint64_t & current_time, Task * const task) {
 	if (task->is_read) {
-		RAID_0::Finish(task);
-		return;
+		return RAID_0::Finish(current_time, task);
 	}
 	Tasks::iterator itask = tasks.find(task);
 	assert(tasks.end() != itask);
 	tasks.erase(itask);
        	ConsistencyPoints::iterator i_cp = cps.find(task);
        	assert(i_cp != cps.end());
+	Tasks retval;
+	retval.insert(task);
+       	metrics.EndTask(current_time - task->t);
+	for (Tasks::iterator i = i_cp->second.begin(); i != i_cp->second.end(); i++) {
+	       	retval.insert(*i);
+	       	metrics.EndTask(current_time - (*i)->t);
+	}
+	// std::cout << *i_cp << std::endl;
        	cps.erase(i_cp);
-       	metrics.EndTask(0);
+	return retval;
 }
 
 void RAID_DP::print(std::ostream & o, const uint64_t & current_time) {

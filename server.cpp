@@ -166,7 +166,6 @@ ServerEvents IOModule::Start(const uint64_t & t) {
 	assert(0 < taskq.size());
 	Task * const finished_task = taskq.front();
 	taskq.pop_front();
-       	metrics.EndTask(t - finished_task->t);
        	ServerEvents retval;
 	if (0 < taskq.size()) {
 	       	retval.insert(new ServerEvent(t + service_time, EvTyIOMFinProc, this));
@@ -174,7 +173,9 @@ ServerEvents IOModule::Start(const uint64_t & t) {
 	for (Drives::iterator drive = shelf->DRIVES().begin(); drive != shelf->DRIVES().end(); drive++) {
 		if (finished_task->SERVERS().end() != finished_task->SERVERS().find(*drive)) {
 		       	pending_tasks.insert(finished_task);
+			// std::cout << (*drive)->name << std::endl;
 			ServerEvents sretval = (*drive)->Submit(finished_task, t);
+			// std::cout << "sretval " << sretval.size() <<std::endl;
 			retval.insert(sretval.begin(), sretval.end());
 			return retval;
 		}
@@ -188,6 +189,7 @@ std::pair<Task *, Event *> IOModule::Finish(const uint64_t & t, Task * const tas
 	Tasks::iterator itask = pending_tasks.find(task);
 	assert(pending_tasks.end() != itask);
        	pending_tasks.erase(itask);
+       	metrics.EndTask(t - task->t);
        	return std::pair<Task *, Event *>(task, NULL);
 }
 

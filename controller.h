@@ -7,6 +7,7 @@
 #include "hba.h"
 
 typedef std::map<Task *, Tasks> ControllerTaskList;
+std::ostream & operator<<(std::ostream & o, const ControllerTaskList & ctl);
 
 class Controller {
 	protected:
@@ -24,8 +25,19 @@ class Controller {
 	       	Task * const EndTask(const uint64_t & t, Task * const task);
 		void print(std::ostream & o, const uint64_t & current_time) const;
 		const HBAs & HBAS() const { return hbas; }
+		const Metrics & METRICS() const { return metrics; }
 };
 
 typedef std::set<Controller *> Controllers;
+
+class Filer: public Controllers {
+	public:
+		const std::string name;
+		Filer(const std::string & p_name);
+		Filer & operator=(Controller * const controller);
+		void print(std::ostream & o, const uint64_t & current_time) const;
+};
+
+typedef std::set<Filer *> Filers;
 
 #endif // CONTROLLER_H
