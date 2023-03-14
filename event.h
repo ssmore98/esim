@@ -6,13 +6,14 @@
 #include <algorithm>
 #include <vector>
 #include <iostream>
+#include <set>
 
 #define MAX_EVENTS (64 * 1024)
 
 class Server;
 class Generator;
 
-typedef enum {EvTyNone, EvTyRateGenNextTask, EvTyServDiskEnd} EventType;
+typedef enum {EvTyNone, EvTyRateGenNextTask, EvTyServDiskEnd, EvTyHBAFinProc, EvTyIOMFinProc} EventType;
 
 class Event {
 	public:
@@ -48,6 +49,8 @@ class ServerEvent: public Event {
 		Generator * const GetGenerator() const;
 		virtual void print(std::ostream & o);
 };
+
+typedef std::set<ServerEvent *> ServerEvents;
 
 bool cmp(const Event * const e1, const Event * const e2);
 

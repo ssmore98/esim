@@ -67,25 +67,21 @@ class RAID_5: public RAID_0 {
 	       	virtual void Finish(Task * const task);
 };
 
-#if 0
 class RAID_4: public RAID_0 {
 	protected:
 	       	std::uniform_int_distribution<uint16_t> select_parity_distr;
-		virtual uint64_t GetServiceTime(Task * const task);
 	public:
 		Drives parity_drives;
-		const size_t stripe_width;
-		RAID_4(const std::string & name, Drives & data_drives, Drives & p_parity_drives, const size_t & p_stripe_width,
+		RAID_4(const std::string & name, Drives & data_drives, Drives & p_parity_drives, const size_t & stripe_width,
 			       	const std::string & p_raid_level="4");
-	       	virtual Task * const Queue(Events & events, const uint64_t & t, Task * const task, IOModule * const iom);
-	       	virtual void UnQueue(Events & events, const uint64_t & t);
-		virtual ServerEvent * const ScheduleTaskEnd(Task * const task, const uint64_t & t);
 	       	size_t StripeSize() const;
 	       	virtual ~RAID_4();
 		virtual void print(std::ostream & o, const uint64_t & current_time);
+	       	virtual TaskList Execute(Task * const task);
+	       	virtual void Finish(Task * const task);
 };
 
-typedef std::map<MasterTask * const, Tasks> ConsistencyPoints;
+typedef std::map<Task * const, Tasks> ConsistencyPoints;
 typedef ConsistencyPoints::value_type ConsistencyPoint;
 
 std::ostream & operator<<(std::ostream & o, const ConsistencyPoint & cp);
@@ -99,11 +95,10 @@ class RAID_DP: public RAID_4 {
 	public:
 		RAID_DP(const std::string & name, Drives & data_drives, Drives & parity_drives,
 			       	const size_t & p_stripe_width);
-	       	virtual Task * const Queue(Events & events, const uint64_t & t, Task * const task, IOModule * const iom);
-	       	virtual void EndTask(Task * const task, const uint64_t & t);
 	       	virtual ~RAID_DP();
 		virtual void print(std::ostream & o, const uint64_t & current_time);
+	       	virtual TaskList Execute(Task * const task);
+	       	virtual void Finish(Task * const task);
 };
-#endif
 
 #endif // RAID_H

@@ -16,6 +16,7 @@ Generator::Generator(const std::string & p_name, const size_t & p_size, const ui
        	rw_type_distr((double)100), loc_distr((double)100), ia_time_sum(0), ia_time_count(0), last_task_time(0),
 	controller(NULL), my_index(index), name(p_name), percent_read(p_percent_read),
        	percent_random(p_percent_random), size(p_size), raid(p_raid) {
+		// std::cout << percent_read << std::endl;
 		index++;
 }
 
@@ -69,11 +70,7 @@ QueueGenerator::QueueGenerator(const std::string & name, const size_t & size, co
 Tasks QueueGenerator::Begin(Events & events, const uint64_t & t) {
 	Tasks tasks;
 	for (unsigned int i = 0; i < qdepth; i++) {
-	       	ia_time_sum += t - last_task_time;
-	       	ia_time_count++;
-	       	Task * const task =  new Task(t, size, (rw_type_distr(generator) < percent_read),
-			       	(loc_distr(generator) < percent_random), this);
-	       	last_task_time = t;
+		Task * const task = CreateTask(t);
 	       	tasks.insert(task);
 	       	pending.insert(task);
 	}
@@ -81,12 +78,12 @@ Tasks QueueGenerator::Begin(Events & events, const uint64_t & t) {
 }
 
 Task * const QueueGenerator::EndTask(Task * const task, const uint64_t & t) {
-	// std::cout << task << ' ' << pending;
+	// std::cout << "DESTROY " << task << ' ' << pending;
 	assert(pending.erase(task));
 	delete task;
 	// std::cout << task << ' ' << pending;
 	Task * const retval = CreateTask(t);
-       	pending.insert(task);
+       	pending.insert(retval);
 	return retval;
 }
 
@@ -96,6 +93,7 @@ Task * const QueueGenerator::CreateTask(const uint64_t & t) {
        	Task * const task =  new Task(t, size, (rw_type_distr(generator) < percent_read),
 		       	(loc_distr(generator) < percent_random), this);
        	last_task_time = t;
+	// std::cout << "CREATE " << task << ' ' << pending;
 	return task;
 }
 

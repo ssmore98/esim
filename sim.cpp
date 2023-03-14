@@ -539,7 +539,6 @@ RAID * const ParseRAID(yaml_parser_t & parser, Events & events, const Drives & d
 					}
 				       	return new RAID_5(name, raid_drives, stripe_width);
 				}
-#if 0
 				if (!strcasecmp("RAID_4", type.c_str())) {
 					Drives raid_drives;
 					for (std::vector<std::string>::const_iterator i = drive_names.begin(); i != drive_names.end(); i++) {
@@ -586,9 +585,9 @@ RAID * const ParseRAID(yaml_parser_t & parser, Events & events, const Drives & d
 						}
 						count++;
 					}
+					// std::cout << stripe_width << std::endl;
 				       	return new RAID_DP(name, data_drives, parity_drives, stripe_width);
 				}
-#endif
 				assert(0);
 			case YAML_SCALAR_EVENT:
 				if (e.data.scalar.value) {
@@ -641,6 +640,7 @@ HBA * const ParseHBA(yaml_parser_t & parser, Events & events, IOModules & ioms) 
 	bool expect_key = false;
 	std::string name = "hba";
 	std::string iom_name = "iom";
+	uint64_t max_iops = 1000000;
 	while (true) {
 		if (!yaml_parser_parse(&parser, &e)) {
 		       	assert(0);
@@ -660,7 +660,7 @@ HBA * const ParseHBA(yaml_parser_t & parser, Events & events, IOModules & ioms) 
 					IOModules shelf_ioms;
 					for (IOModules::const_iterator j = ioms.begin(); j != ioms.end(); j++) {
 					       	if (!strcasecmp((*j)->name.c_str(), iom_name.c_str())) {
-						       	HBA * const hba = new HBA(name);
+						       	HBA * const hba = new HBA(name, uint64_t(1000000 / double(max_iops)));
 							*hba = *j;
 							return hba;
 					       	}
@@ -682,6 +682,8 @@ HBA * const ParseHBA(yaml_parser_t & parser, Events & events, IOModules & ioms) 
 						       	name = value;
 						} else if (!strcasecmp("iom", key.c_str())) {
 						       	iom_name = value;
+						} else if (!strcasecmp("max_iops", key.c_str())) {
+						       	max_iops = std::stoul(value);
 					       	} else {
 						       	assert(0);
 						}
@@ -706,6 +708,7 @@ IOModule * const ParseIOModule(yaml_parser_t & parser, Events & events) {
 	uint16_t in_mapping = 0;
 	bool expect_key = false;
 	std::string name = "iom";
+	uint64_t max_iops = 1000000;
 	while (true) {
 		if (!yaml_parser_parse(&parser, &e)) {
 		       	assert(0);
@@ -722,7 +725,7 @@ IOModule * const ParseIOModule(yaml_parser_t & parser, Events & events) {
 				in_mapping--;
 				// std::cout << in_mapping << std::endl;
 				if (!in_mapping) {
-					return new IOModule(name);
+					return new IOModule(name, uint64_t(1000000 / double(max_iops)));
 				}
 				break;
 			case YAML_SCALAR_EVENT:
@@ -737,6 +740,8 @@ IOModule * const ParseIOModule(yaml_parser_t & parser, Events & events) {
 						expect_key = true;
 					       	if (!strcasecmp("name", key.c_str())) {
 						       	name = value;
+						} else if (!strcasecmp("max_iops", key.c_str())) {
+						       	max_iops = std::stoul(value);
 					       	} else {
 						       	assert(0);
 						}
@@ -952,11 +957,29 @@ int main(int argc, char **argv) {
 		t = e->t;
 	       	// e->print(std::cout);
 		switch (e->type) {
+		       	case EvTyIOMFinProc:
+				{
+				       	ServerEvents ses = e->GetServer()->Start(t);
+					for (ServerEvents::iterator i = ses.begin(); i != ses.end(); i++) {
+					       	events.push_back(*i);
+					       	std::push_heap(events.begin(), events.end(), cmp);
+					}
+				}
+				break;
+		       	case EvTyHBAFinProc:
+				{
+				       	ServerEvents ses = e->GetServer()->Start(t);
+					for (ServerEvents::iterator i = ses.begin(); i != ses.end(); i++) {
+					       	events.push_back(*i);
+					       	std::push_heap(events.begin(), events.end(), cmp);
+					}
+				}
+				break;
 		       	case EvTyRateGenNextTask:
 				{
 				       	Task * const task = e->GetGenerator()->NextTask(events, t);
 					assert(task);
-					e->GetGenerator()->GetController()->ScheduleTask(e->GetGenerator()->raid, task, events);
+					e->GetGenerator()->GetController()->ScheduleTask(e->GetGenerator()->raid, task, events, t);
 				}
 				break;
 		       	case EvTyServDiskEnd:
@@ -988,14 +1011,16 @@ int main(int argc, char **argv) {
 								       	}
 									for (Controllers::iterator ctrl = controllers.begin();
 											ctrl != controllers.end(); ctrl++) {
-										Task *ctask = (*ctrl)->EndTask(t, htask);
-										if (ctask) {
-											Task * const gtask =
-											       	ctask->generator->EndTask(ctask, t);
-											if (gtask) {
-											       	(*ctrl)->ScheduleTask(gtask->generator->raid,
-													       	gtask, events);
-											}
+										if ((*ctrl)->HBAS().end() != (*ctrl)->HBAS().find(*hba)) {
+										       	Task *ctask = (*ctrl)->EndTask(t, htask);
+										       	if (ctask) {
+											       	Task * const gtask =
+												       	ctask->generator->EndTask(ctask, t);
+											       	if (gtask) {
+												       	(*ctrl)->ScheduleTask(gtask->generator->raid,
+														       	gtask, events, t);
+											       	}
+										       	}
 										}
 									}
 									break;

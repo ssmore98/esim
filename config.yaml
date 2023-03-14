@@ -12,8 +12,8 @@ drive:
         type: ssd_pm1733a
 raid:
         name: raid
-        type: raid_5
-        stripe_width: 512
+        type: raid_dp
+        stripe_width: 65536
         drives: 
           - ssd1
           - ssd2
@@ -21,14 +21,18 @@ raid:
           - ssd4
 iom:
         name: iom1
+        max_iops: 1000000
 iom:
         name: iom2
+        max_iops: 1000000
 hba:
         name: hba1
         iom: iom1
+        max_iops: 1000000
 hba:
         name: hba2
         iom: iom2
+        max_iops: 1000000
 shelf:
         ioms:
           - iom1
@@ -43,7 +47,15 @@ generator:
         raid: raid
         queue_depth: 2
         # iops: 100
-        size: 1024
+        size: 65536
+        percent_read: 0
+        percent_random: 0
+generator:
+        name: gen2
+        raid: raid
+        queue_depth: 2
+        # iops: 100
+        size: 65536
         percent_read: 0
         percent_random: 0
 controller:
@@ -52,5 +64,10 @@ controller:
           - gen1
         hbas:
           - hba1
+controller:
+        name: controller2
+        generators: 
+          - gen2
+        hbas:
           - hba2
 simulation_time: 1000000

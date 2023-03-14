@@ -94,12 +94,12 @@ void Shelf::print(std::ostream & o, const uint64_t & current_time) {
 	       	o << "\t Drive " << (*i)->name << std::endl;
 	}
 	*/
-	o << "\tTotal I/Os " << std::accumulate(ioms.begin(), ioms.end(), 0, sumtasks) << std::endl;
-	if (current_time) o << "\tIOPS " << (std::accumulate(ioms.begin(), ioms.end(), 0, sumtasks)
+	if (current_time) o << "\tIOPS " << (std::accumulate<IOModules::iterator, uint64_t>(ioms.begin(), ioms.end(), 0, sumtasks)
 		       	* 1000 * 1000) / current_time << std::endl;
-	o << "\tTotal Bytes " << std::accumulate(ioms.begin(), ioms.end(), 0, sumszs) << std::endl;
-	if (current_time) o << "\tMBPS " << (std::accumulate(ioms.begin(), ioms.end(), 0, sumszs) * 1000 * 1000)
+	if (current_time) o << "\tMBPS " << (std::accumulate<IOModules::iterator, uint64_t>(ioms.begin(), ioms.end(), 0, sumszs) * 1000 * 1000)
 	       	/ (current_time * 1024 * 1024) << std::endl;
+	o << "\tTotal I/Os " << std::accumulate<IOModules::iterator, uint64_t>(ioms.begin(), ioms.end(), 0, sumtasks) << std::endl;
+	o << "\tTotal Bytes " << std::accumulate<IOModules::iterator, uint64_t>(ioms.begin(), ioms.end(), 0, sumszs) << std::endl;
 	ioms.print(o, current_time);
 }
 
@@ -113,7 +113,7 @@ Shelf & Shelf::operator=(Drive * const drive) {
 	return *this;
 }
 
-IOModule::IOModule(const std::string & name): Server(name), shelf(NULL) {
+IOModule::IOModule(const std::string & name, const uint64_t & p_service_time): Server(name), shelf(NULL), service_time(p_service_time) {
 }
 
 IOModule::~IOModule() {
@@ -121,9 +121,11 @@ IOModule::~IOModule() {
 
 void IOModule::print(std::ostream & o, const uint64_t & current_time) {
 	o << "IOM " << name << std::endl;
+	/*
 	o << "\tTotal I/Os " << metrics.N_TASKS() << std::endl;
-	if (current_time) o << "\tIOPS " << (metrics.N_TASKS() * 1000 * 1000) / current_time << std::endl;
 	o << "\tTotal Bytes " << metrics.SZ_SUM() << std::endl;
+	*/
+	if (current_time) o << "\tIOPS " << (metrics.N_TASKS() * 1000 * 1000) / current_time << std::endl;
 	if (current_time) o << "\tMBPS " << (metrics.SZ_SUM() * 1000 * 1000) / (current_time * 1024 * 1024) << std::endl;
 	this->Server::print(o, current_time);
 }
@@ -138,52 +140,74 @@ static uint64_t sumsvcsum(uint64_t acc, IOModule * const x) { return acc + x->ME
 static uint64_t sumqdsum(uint64_t acc, IOModule * const x) { return acc + x->METRICS().QD_SUM(); }
 
 void IOModules::print(std::ostream & o, const uint64_t & current_time) const {
-	if (std::accumulate(begin(), end(), 0, sumtasks)) {
-	       	o << "\tavLatency " << double(std::accumulate(begin(), end(), 0, sumtasktime)) /
-		       	double(std::accumulate(begin(), end(), 0, sumtasks) * 1000 * 1000) << std::endl;
-	       	o << "\tavServiceTime " << double(std::accumulate(begin(), end(), 0, sumsvcsum)) /
-		       	double(std::accumulate(begin(), end(), 0, sumtasks) * 1000 * 1000) << std::endl;
-	       	o << "\tavQueueDepth " << double(std::accumulate(begin(), end(), 0, sumqdsum)) /
-		       	double(std::accumulate(begin(), end(), 0, sumtasks) * 1000 * 1000) << std::endl;
+	if (std::accumulate<IOModules::iterator, uint64_t>(begin(), end(), 0, sumtasks)) {
+	       	o << "\tavLatency " << double(std::accumulate<IOModules::iterator, uint64_t>(begin(), end(), 0, sumtasktime)) /
+		       	double(std::accumulate<IOModules::iterator, uint64_t>(begin(), end(), 0, sumtasks) * 1000 * 1000) << std::endl;
+	       	o << "\tavServiceTime " << double(std::accumulate<IOModules::iterator, uint64_t>(begin(), end(), 0, sumsvcsum)) /
+		       	double(std::accumulate<IOModules::iterator, uint64_t>(begin(), end(), 0, sumtasks) * 1000 * 1000) << std::endl;
+	       	o << "\tavQueueDepth " << double(std::accumulate<IOModules::iterator, uint64_t>(begin(), end(), 0, sumqdsum)) /
+		       	double(std::accumulate<IOModules::iterator, uint64_t>(begin(), end(), 0, sumtasks) * 1000 * 1000) << std::endl;
 	}
 }
 
-ServerEvent *IOModule::Submit(Task * const task) {
+ServerEvents IOModule::Submit(Task * const task, const uint64_t & t) {
 	assert(task->SERVERS().end() != task->SERVERS().find(this));
 	taskq.push_back(task);
-       	metrics.StartTask(taskq.size(), 0, task->size);
+       	metrics.StartTask(taskq.size(), service_time, task->size);
+	if (1 == taskq.size()) {
+		ServerEvents retval;
+	       	retval.insert(new ServerEvent(t + service_time, EvTyIOMFinProc, this));
+		return retval;
+	}
+	return ServerEvents();
+}
+
+ServerEvents IOModule::Start(const uint64_t & t) {
+	assert(0 < taskq.size());
+	Task * const finished_task = taskq.front();
+	taskq.pop_front();
+       	metrics.EndTask(t - finished_task->t);
+       	ServerEvents retval;
+	if (0 < taskq.size()) {
+	       	retval.insert(new ServerEvent(t + service_time, EvTyIOMFinProc, this));
+	}
 	for (Drives::iterator drive = shelf->DRIVES().begin(); drive != shelf->DRIVES().end(); drive++) {
-		if (task->SERVERS().end() != task->SERVERS().find(*drive)) {
-			return (*drive)->Submit(task);
+		if (finished_task->SERVERS().end() != finished_task->SERVERS().find(*drive)) {
+		       	pending_tasks.insert(finished_task);
+			ServerEvents sretval = (*drive)->Submit(finished_task, t);
+			retval.insert(sretval.begin(), sretval.end());
+			return retval;
 		}
 	}
 	assert(0);
-	return NULL;
+	return ServerEvents();
 }
 
 std::pair<Task *, Event *> IOModule::Finish(const uint64_t & t, Task * const task) {
 	assert(task);
-	for (TaskQ::iterator itask = taskq.begin(); itask != taskq.end(); itask++) {
-		if (task == *itask) {
-			taskq.erase(itask);
-		       	metrics.EndTask(0);
-		       	return std::pair<Task *, Event *>(task, NULL);
-		}
-	}
-	assert(0);
-	return std::pair<Task *, Event *>(NULL, NULL);
+	Tasks::iterator itask = pending_tasks.find(task);
+	assert(pending_tasks.end() != itask);
+       	pending_tasks.erase(itask);
+       	return std::pair<Task *, Event *>(task, NULL);
 }
 
-ServerEvent *SSD_PM1733a::Submit(Task * const task) {
+ServerEvents SSD_PM1733a::Submit(Task * const task, const uint64_t & t) {
 	assert(task->SERVERS().end() != task->SERVERS().find(this));
 	assert(MAX_TASKQ > taskq.size());
 	taskq.push_back(task);
 	if (1 == taskq.size()) {
 	       	const uint64_t xtime = GetServiceTime(task);
 		metrics.StartTask(1, xtime, task->size);
-	       	return new ServerEvent(task->t + xtime, EvTyServDiskEnd, this);
+	       	ServerEvents retval;
+	       	retval.insert(new ServerEvent(t + xtime, EvTyServDiskEnd, this));
+		return retval;
 	}
-	return NULL;
+	return ServerEvents();
+}
+
+ServerEvents SSD_PM1733a::Start(const uint64_t & t) {
+	assert(0);
+	return ServerEvents();
 }
 
 std::pair<Task *, Event *> SSD_PM1733a::Finish(const uint64_t & t, Task * const task) {

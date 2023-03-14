@@ -26,8 +26,9 @@ class Server {
 	       	virtual ~Server() = 0;
 		virtual void print(std::ostream & o, const uint64_t & current_time);
 		const Metrics & METRICS() const { return metrics; }
-	       	virtual ServerEvent *Submit(Task * const task) = 0;
+	       	virtual ServerEvents Submit(Task * const task, const uint64_t & t) = 0;
 	       	virtual std::pair<Task *, Event *> Finish(const uint64_t & t, Task * const task) = 0;
+	       	virtual ServerEvents Start(const uint64_t & t) = 0;
 };
 
 class Servers: public std::set<Server *> {
@@ -43,8 +44,9 @@ class Drive: public Server {
 	public:
 		Drive(const std::string & name);
 		Drive & operator=(Shelf * const p_self);
-	       	virtual ServerEvent *Submit(Task * const task) = 0;
+	       	virtual ServerEvents Submit(Task * const task, const uint64_t & t) = 0;
 		Shelf * const SHELF() const;
+	       	virtual ServerEvents Start(const uint64_t & t) = 0;
 };
 
 typedef std::set<Drive *> Drives;
@@ -52,14 +54,17 @@ typedef std::set<Drive *> Drives;
 class IOModule: public Server {
 	protected:
 		Shelf *shelf;
+		Tasks pending_tasks;
 	public:
-		IOModule(const std::string & name);
+		const uint64_t service_time;
+		IOModule(const std::string & name, const uint64_t & p_service_time);
 	       	virtual ~IOModule();
 	       	virtual void print(std::ostream & o, const uint64_t & current_time);
 		IOModule & operator=(Shelf * const p_self);
 		Shelf * const SHELF() const { return shelf; }
-	       	virtual ServerEvent *Submit(Task * const task);
+	       	virtual ServerEvents Submit(Task * const task, const uint64_t & t);
 	       	virtual std::pair<Task *, Event *> Finish(const uint64_t & t, Task * const task);
+	       	virtual ServerEvents Start(const uint64_t & t);
 };
 
 class IOModules: public std::set<IOModule *> {
@@ -93,8 +98,9 @@ class SSD_PM1733a: public Drive {
 	       	virtual ~SSD_PM1733a();
 		virtual size_t StripeSize() const;
 		virtual void print(std::ostream & o, const uint64_t & current_time);
-	       	virtual ServerEvent *Submit(Task * const task);
+	       	virtual ServerEvents Submit(Task * const task, const uint64_t & t);
 	       	virtual std::pair<Task *, Event *> Finish(const uint64_t & t, Task * const task);
+	       	virtual ServerEvents Start(const uint64_t & t);
 };
 
 #endif // SERVER_H
