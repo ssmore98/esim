@@ -30,45 +30,38 @@ void Controller::ScheduleTask(RAID * const raid, Task * const task, Events & eve
        	ControllerTaskList::iterator ictl = ctl.insert(ctl.end(), ControllerTaskList::value_type(task, Tasks()));
        	metrics.StartTask(ctl.size(), 0, task->size);
        	TaskList tlist = raid->Execute(task);
-	/*
-	if (0 == tlist.size()) {
-		ctl.erase(ictl);
-	       	metrics.EndTask(0);
-	       	Task * next_task = task->generator->EndTask(task, current_time);
-		ScheduleTask(raid, next_task, events, current_time);
-		return;
-	}
-	*/
        	for (TaskList::iterator k = tlist.begin(); k != tlist.end(); k++) {
 	       	Drive * const drive = k->first;
 	       	bool done = false;
 	       	for (HBAs::iterator hba = hbas.begin(); hba != hbas.end(); hba++) {
-		       	for (IOModules::const_iterator iom = (*hba)->IOMS().begin(); iom != (*hba)->IOMS().end(); iom++) {
-			       	Shelf * const shelf = (*iom)->SHELF();
-			       	for (Drives::const_iterator d = shelf->DRIVES().begin(); d != shelf->DRIVES().end(); d++) {
-				       	if (drive == *d) {
-					       	// std::cout << drive << std::endl;
-					       	for (Tasks::iterator t = k->second.begin(); t != k->second.end(); t++) {
-						       	**t = drive;
-						       	**t = *iom;
-						       	**t = *hba;
-						       	// std::cout << '\t' << *t << std::endl;
-							ictl->second.insert(*t);
-						       	ServerEvents sevents = (*hba)->Submit(*t, current_time);
-							for (ServerEvents::iterator sevent = sevents.begin(); sevent != sevents.end();
-								       sevent++) {
-							       	events.push_back(*sevent);
-							       	std::push_heap(events.begin(), events.end(), cmp);
-							}
+	       	       	for (Ports::iterator port = (*hba)->PORTS().begin(); port != (*hba)->PORTS().end(); port++) {
+			       	for (IOModules::const_iterator iom = (*port)->IOMS().begin(); iom != (*port)->IOMS().end(); iom++) {
+				       	Shelf * const shelf = (*iom)->SHELF();
+				       	for (Drives::const_iterator d = shelf->DRIVES().begin(); d != shelf->DRIVES().end(); d++) {
+					       	if (drive == *d) {
+						       	// std::cout << drive << std::endl;
+						       	for (Tasks::iterator t = k->second.begin(); t != k->second.end(); t++) {
+							       	**t = drive;
+							       	**t = *iom;
+							       	**t = *port;
+							       	// std::cout << '\t' << *t << std::endl;
+								ictl->second.insert(*t);
+							       	ServerEvents sevents = (*port)->Submit(*t, current_time);
+								for (ServerEvents::iterator sevent = sevents.begin(); sevent != sevents.end();
+									       sevent++) {
+								       	events.push_back(*sevent);
+								       	std::push_heap(events.begin(), events.end(), cmp);
+								}
+						       	}
+						       	done = true;
 					       	}
-					       	done = true;
+					       	if (done) break;
 				       	}
 				       	if (done) break;
 			       	}
 			       	if (done) break;
-		       	}
-		       	if (done) break;
-	       	}
+	       	       	}
+		}
        	}
 }
 

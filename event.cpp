@@ -4,6 +4,7 @@
 #include "event.h"
 #include "server.h"
 #include "generator.h"
+#include "controller.h"
 
 Event::Event(const uint64_t & p_t, const EventType & p_type): t(p_t), type(p_type) {
 }
@@ -28,18 +29,30 @@ Server * const GeneratorEvent::GetServer() const {
 	return NULL;
 }
 
+Controller * const GeneratorEvent::GetController() const {
+	assert(0);
+	return NULL;
+}
+
 bool cmp(const Event * const e1, const Event * const e2)  { 
 	// std::cout << e1 << " " << e2 << std::endl;
 	return e1->t > e2->t;
 }
 
-ServerEvent::ServerEvent(const uint64_t & t, const EventType & type, Server * const p_server): Event(t, type), server(p_server) {
+ServerEvent::ServerEvent(const uint64_t & t, const EventType & type, Server * const p_server, Task * const p_task):
+       	Event(t, type), server(p_server), task(p_task) {
 }
 
 Server * const ServerEvent::GetServer() const {
 	return server;
 }
+
 Generator * const ServerEvent::GetGenerator() const {
+	assert(0);
+	return NULL;
+}
+
+Controller * const ServerEvent::GetController() const {
 	assert(0);
 	return NULL;
 }
@@ -55,8 +68,8 @@ std::ostream & operator<<(std::ostream & o, const EventType & type) {
 		case EvTyServDiskEnd:
 			o << "Server Disk End";
 			break;
-		case EvTyHBAFinProc:
-			o << "HBA Finish Processing";
+		case EvTyPortFinProc:
+			o << "Port Finish Processing";
 			break;
 		case EvTyIOMFinProc:
 			o << "IO Module Finish Processing";
@@ -94,6 +107,29 @@ std::ostream & operator<<(std::ostream & o, const Events & events) {
 	}
 	o << ")";
 	return o;
+}
+
+ControllerEvent::ControllerEvent(const uint64_t & t, const EventType & type, Controller * const p_controller, Task * const p_task):
+       	Event(t, type), controller(p_controller), task(p_task) {
+}
+
+Server * const ControllerEvent::GetServer() const {
+	assert(0);
+	return NULL;
+}
+
+Generator * const ControllerEvent::GetGenerator() const {
+	assert(0);
+	return NULL;
+}
+
+Controller * const ControllerEvent::GetController() const {
+	return controller;
+}
+
+void ControllerEvent::print(std::ostream & o) const {
+	Event::print(o);
+	o << "Controller: " << controller->name << ' ';
 }
 
 #endif // EVENT_CPP

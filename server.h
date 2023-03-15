@@ -55,9 +55,11 @@ class IOModule: public Server {
 	protected:
 		Shelf *shelf;
 		Tasks pending_tasks;
+	       	uint64_t GetServiceTime(Task * const task);
 	public:
 		const uint64_t service_time;
-		IOModule(const std::string & name, const uint64_t & p_service_time);
+		const double mbps;
+		IOModule(const std::string & name, const uint64_t & p_service_time, const double & p_mbps);
 	       	virtual ~IOModule();
 	       	virtual void print(std::ostream & o, const uint64_t & current_time);
 		IOModule & operator=(Shelf * const p_self);

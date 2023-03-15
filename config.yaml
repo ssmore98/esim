@@ -1,62 +1,54 @@
-drive:
-        name: ssd1
+drives:
+        name: ssd
         type: ssd_pm1733a
-drive:
-        name: ssd2
-        type: ssd_pm1733a
-drive:
-        name: ssd3
-        type: ssd_pm1733a
-drive:
-        name: ssd4
-        type: ssd_pm1733a
+        instances: 24
 raid:
         name: raid
         type: raid_dp
         stripe_width: 65536
         drives: 
-          - ssd1
-          - ssd2
-          - ssd3
-          - ssd4
-iom:
-        name: iom1
+          - ssd\d+
+ioms:
+        name: iom
         max_iops: 1000000
-iom:
-        name: iom2
-        max_iops: 1000000
-hba:
-        name: hba1
+        mbps: 1000
+        instances: 2
+port:
+        name: port1
         iom: iom1
         max_iops: 1000000
         mbps: 1000
-hba:
-        name: hba2
+port:
+        name: port2
         iom: iom2
         max_iops: 1000000
         mbps: 1000
+hba:
+        name: hba1
+        ports:
+                - port1
+hba:
+        name: hba2
+        ports:
+                - port2
 shelf:
         ioms:
-          - iom1
-          - iom2
+          - iom\d+
         drives: 
-          - ssd1
-          - ssd2
-          - ssd3
-          - ssd4
+          - ssd\d+
 generator:
         name: gen1
         raid: raid
-        queue_depth: 2
-        # iops: 100
+        # queue_depth: 2
+        iops: 1000
         size: 65536
         percent_read: 0
         percent_random: 0
 generator:
         name: gen2
         raid: raid
-        queue_depth: 2
-        # iops: 100
+        # queue_depth: 2
+        iops: 1000
         size: 65536
         percent_read: 0
         percent_random: 0

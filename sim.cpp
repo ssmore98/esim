@@ -2,13 +2,14 @@
 #define SIM_CPP
 
 #include <map>
+#include <regex>
 #include <yaml.h>
 
 #include "server.h"
 #include "event.h"
 #include "generator.h"
 #include "task.h"
-#include "hba.h"
+#include "port.h"
 #include "controller.h"
 #include "raid.h"
 
@@ -218,7 +219,7 @@ std::vector<std::string> GetStrings(yaml_parser_t & parser) {
 	return retval;
 }
 
-Controller * const ParseController(yaml_parser_t & parser, Events & events, const Generators & generators, const HBAs & hbas) {
+Controller * const ParseController(yaml_parser_t & parser, const Generators & generators, const HBAs & hbas) {
 	yaml_event_t e;
 	std::string key;
 	std::string value;
@@ -244,36 +245,34 @@ Controller * const ParseController(yaml_parser_t & parser, Events & events, cons
 				// std::cout << in_mapping << std::endl;
 			       	yaml_event_delete(&e);
 				{
-					Generators shelf_generators;
+					Generators controller_generators;
 					for (std::vector<std::string>::const_iterator i = generator_names.begin();
 						       	i != generator_names.end(); i++) {
 						// std::cout << *i << std::endl;
 						for (Generators::const_iterator j = generators.begin(); j != generators.end(); j++) {
-							if (!strcasecmp((*j)->name.c_str(), (*i).c_str())) {
-								shelf_generators.insert(*j);
-								break;
+							if (std::regex_match((*j)->name, std::regex(*i, std::regex::icase))) {
+								controller_generators.insert(*j);
 							}
 						}
 					}
-					HBAs shelf_hbas;
+					HBAs controller_hbas;
 					for (std::vector<std::string>::const_iterator i = hba_names.begin();
 						       	i != hba_names.end(); i++) {
 						// std::cout << *i << std::endl;
 						for (HBAs::const_iterator j = hbas.begin();
 							       	j != hbas.end(); j++) {
-							if (!strcasecmp((*j)->name.c_str(), (*i).c_str())) {
-								shelf_hbas.insert(*j);
-								break;
+							if (std::regex_match((*j)->name, std::regex(*i, std::regex::icase))) {
+								controller_hbas.insert(*j);
 							}
 						}
 					}
 				       	Controller * const retval = new Controller(name);
-					for (Generators::const_iterator i = shelf_generators.begin();
-							i != shelf_generators.end(); i++) {
+					for (Generators::const_iterator i = controller_generators.begin();
+							i != controller_generators.end(); i++) {
 						*retval = *i;
 					}
-					for (HBAs::const_iterator i = shelf_hbas.begin();
-							i != shelf_hbas.end(); i++) {
+					for (HBAs::const_iterator i = controller_hbas.begin();
+							i != controller_hbas.end(); i++) {
 						*retval = *i;
 					}
 					return retval;
@@ -289,7 +288,7 @@ Controller * const ParseController(yaml_parser_t & parser, Events & events, cons
 						value = (char *)e.data.scalar.value;
 						// std::cout << "VALUE " << value <<std::endl;
 						expect_key = true;
-						if (!strcasecmp("name", key.c_str())) {
+						if (std::regex_match(key, std::regex("name", std::regex::icase))) {
 						       	name = value;
 					       	} else {
 						       	assert(0);
@@ -298,9 +297,9 @@ Controller * const ParseController(yaml_parser_t & parser, Events & events, cons
 				}
 				break;		       	
 			case YAML_SEQUENCE_START_EVENT:
-			       	if (!strcasecmp("generators", key.c_str())) {
+			       	if (std::regex_match(key, std::regex("generators", std::regex::icase))) {
 					generator_names = GetStrings(parser);
-				} else if (!strcasecmp("hbas", key.c_str())) {
+				} else if (std::regex_match(key, std::regex("hbas", std::regex::icase))) {
 					hba_names = GetStrings(parser);
 				} else {
 				       	assert(0);
@@ -317,7 +316,7 @@ Controller * const ParseController(yaml_parser_t & parser, Events & events, cons
 	return NULL;
 }
 
-Shelf * const ParseShelf(yaml_parser_t & parser, Events & events, const Drives & drives, const IOModules & ioms) {
+Shelf * const ParseShelf(yaml_parser_t & parser, const Drives & drives, const IOModules & ioms) {
 	yaml_event_t e;
 	std::string key;
 	std::string value;
@@ -346,9 +345,8 @@ Shelf * const ParseShelf(yaml_parser_t & parser, Events & events, const Drives &
 					for (std::vector<std::string>::const_iterator i = drive_names.begin(); i != drive_names.end(); i++) {
 						// std::cout << *i << std::endl;
 						for (Drives::const_iterator j = drives.begin(); j != drives.end(); j++) {
-							if (!strcasecmp((*j)->name.c_str(), (*i).c_str())) {
+							if (std::regex_match((*j)->name, std::regex(*i, std::regex::icase))) {
 								shelf_drives.insert(*j);
-								break;
 							}
 						}
 					}
@@ -358,9 +356,8 @@ Shelf * const ParseShelf(yaml_parser_t & parser, Events & events, const Drives &
 						// std::cout << *i << std::endl;
 						for (IOModules::const_iterator j = ioms.begin();
 							       	j != ioms.end(); j++) {
-							if (!strcasecmp((*j)->name.c_str(), (*i).c_str())) {
+							if (std::regex_match((*j)->name, std::regex(*i, std::regex::icase))) {
 								shelf_ioms.insert(*j);
-								break;
 							}
 						}
 					}
@@ -388,7 +385,7 @@ Shelf * const ParseShelf(yaml_parser_t & parser, Events & events, const Drives &
 						value = (char *)e.data.scalar.value;
 						// std::cout << "VALUE " << value <<std::endl;
 						expect_key = true;
-						if (!strcasecmp("name", key.c_str())) {
+						if (std::regex_match(key, std::regex("name", std::regex::icase))) {
 						       	name = value;
 					       	} else {
 						       	assert(0);
@@ -397,9 +394,9 @@ Shelf * const ParseShelf(yaml_parser_t & parser, Events & events, const Drives &
 				}
 				break;		       	
 			case YAML_SEQUENCE_START_EVENT:
-			       	if (!strcasecmp("drives", key.c_str())) {
+			       	if (std::regex_match(key, std::regex("drives", std::regex::icase))) {
 					drive_names = GetStrings(parser);
-				} else if (!strcasecmp("ioms", key.c_str())) {
+				} else if (std::regex_match(key, std::regex("ioms", std::regex::icase))) {
 					iom_names = GetStrings(parser);
 				} else {
 				       	assert(0);
@@ -416,7 +413,71 @@ Shelf * const ParseShelf(yaml_parser_t & parser, Events & events, const Drives &
 	return NULL;
 }
 
-Drive * const ParseDrive(yaml_parser_t & parser, Events & events) {
+void ParseDrives(yaml_parser_t & parser, Drives & drives) {
+	yaml_event_t e;
+	std::string key;
+	std::string value;
+	std::string name = "drive";
+	std::string type = "drive";
+	bool expect_key = false;
+	uint16_t in_mapping = 0;
+	uint16_t instances = 1;
+	while (true) {
+		if (!yaml_parser_parse(&parser, &e)) {
+		       	assert(0);
+	       	}
+	       	switch (e.type) {
+			case YAML_MAPPING_START_EVENT:
+				expect_key = true;
+				in_mapping += 1;
+				// std::cout << in_mapping << std::endl;
+				break;
+			case YAML_MAPPING_END_EVENT:
+				assert(in_mapping);
+				in_mapping--;
+				// std::cout << in_mapping << std::endl;
+			       	yaml_event_delete(&e);
+				for (uint16_t i = 0; i < instances; i++) {
+					if (std::regex_match(type, std::regex("SSD_PM1733a", std::regex::icase))) {
+					       	drives.insert(new SSD_PM1733a(name + std::to_string(i + 1)));
+				       	} else {
+					       	assert(0);
+					}
+				}
+				return;
+			case YAML_SCALAR_EVENT:
+				if (e.data.scalar.value) {
+				       	// std::cout << e.data.scalar.value << " " << e.data.scalar.style << std::endl;
+				        if (expect_key) {
+						key = (char *)e.data.scalar.value;
+						// std::cout << "KEY " << key <<std::endl;
+						expect_key = false;
+					} else {
+						value = (char *)e.data.scalar.value;
+						// std::cout << "VALUE " << value <<std::endl;
+						expect_key = true;
+						if (std::regex_match(key, std::regex("name", std::regex::icase))) {
+						       	name = value;
+						} else if (std::regex_match(key, std::regex("type", std::regex::icase))) {
+						       	type = value;
+						} else if (std::regex_match(key, std::regex("instances", std::regex::icase))) {
+						       	instances = std::stoul(value);
+					       	} else {
+						       	assert(0);
+						}
+					}
+				}
+				break;		       	
+			default:
+			       	std::cout << e.type <<std::endl;
+			       	assert(0);
+	       	}
+		yaml_event_delete(&e);
+	}
+	assert(0);
+}
+
+Drive * const ParseDrive(yaml_parser_t & parser) {
 	yaml_event_t e;
 	std::string key;
 	std::string value;
@@ -439,7 +500,7 @@ Drive * const ParseDrive(yaml_parser_t & parser, Events & events) {
 				in_mapping--;
 				// std::cout << in_mapping << std::endl;
 			       	yaml_event_delete(&e);
-				if (!strcasecmp("SSD_PM1733a", type.c_str())) {
+				if (std::regex_match(key, std::regex("SSD_PM1733a", std::regex::icase))) {
 				       	return new SSD_PM1733a(name);
 				}
 				assert(0);
@@ -454,9 +515,9 @@ Drive * const ParseDrive(yaml_parser_t & parser, Events & events) {
 						value = (char *)e.data.scalar.value;
 						// std::cout << "VALUE " << value <<std::endl;
 						expect_key = true;
-					       	if (!strcasecmp("name", key.c_str())) {
+						if (std::regex_match(key, std::regex("name", std::regex::icase))) {
 						       	name = value;
-						} else if (!strcasecmp("type", key.c_str())) {
+						} else if (std::regex_match(key, std::regex("type", std::regex::icase))) {
 						       	type = value;
 					       	} else {
 						       	assert(0);
@@ -474,7 +535,7 @@ Drive * const ParseDrive(yaml_parser_t & parser, Events & events) {
 	return NULL;
 }
 
-RAID * const ParseRAID(yaml_parser_t & parser, Events & events, const Drives & drives) {
+RAID * const ParseRAID(yaml_parser_t & parser, const Drives & drives) {
 	yaml_event_t e;
 	std::string key;
 	std::string value;
@@ -500,53 +561,49 @@ RAID * const ParseRAID(yaml_parser_t & parser, Events & events, const Drives & d
 				in_mapping--;
 				// std::cout << in_mapping << std::endl;
 			       	yaml_event_delete(&e);
-				if (!strcasecmp("RAID_0", type.c_str())) {
+				if (std::regex_match(type, std::regex("RAID_0", std::regex::icase))) {
 					Drives raid_drives;
 					for (std::vector<std::string>::const_iterator i = drive_names.begin(); i != drive_names.end(); i++) {
 						// std::cout << *i << std::endl;
 						for (Drives::const_iterator j = drives.begin(); j != drives.end(); j++) {
-							if (!strcasecmp((*j)->name.c_str(), (*i).c_str())) {
+							if (std::regex_match((*j)->name, std::regex(*i, std::regex::icase))) {
 								raid_drives.insert(*j);
-								break;
 							}
 						}
 					}
 				       	return new RAID_0(name, raid_drives, stripe_width);
 				}
-				if (!strcasecmp("RAID_1", type.c_str())) {
+				if (std::regex_match(type, std::regex("RAID_1", std::regex::icase))) {
 					Drives raid_drives;
 					for (std::vector<std::string>::const_iterator i = drive_names.begin(); i != drive_names.end(); i++) {
 						// std::cout << *i << std::endl;
 						for (Drives::const_iterator j = drives.begin(); j != drives.end(); j++) {
-							if (!strcasecmp((*j)->name.c_str(), (*i).c_str())) {
+							if (std::regex_match((*j)->name, std::regex(*i, std::regex::icase))) {
 								raid_drives.insert(*j);
-								break;
 							}
 						}
 					}
 				       	return new RAID_1(name, raid_drives);
 				}
-				if (!strcasecmp("RAID_5", type.c_str())) {
+				if (std::regex_match(type, std::regex("RAID_5", std::regex::icase))) {
 					Drives raid_drives;
 					for (std::vector<std::string>::const_iterator i = drive_names.begin(); i != drive_names.end(); i++) {
 						// std::cout << *i << std::endl;
 						for (Drives::const_iterator j = drives.begin(); j != drives.end(); j++) {
-							if (!strcasecmp((*j)->name.c_str(), (*i).c_str())) {
+							if (std::regex_match((*j)->name, std::regex(*i, std::regex::icase))) {
 								raid_drives.insert(*j);
-								break;
 							}
 						}
 					}
 				       	return new RAID_5(name, raid_drives, stripe_width);
 				}
-				if (!strcasecmp("RAID_4", type.c_str())) {
+				if (std::regex_match(type, std::regex("RAID_4", std::regex::icase))) {
 					Drives raid_drives;
 					for (std::vector<std::string>::const_iterator i = drive_names.begin(); i != drive_names.end(); i++) {
 						// std::cout << *i << std::endl;
 						for (Drives::const_iterator j = drives.begin(); j != drives.end(); j++) {
-							if (!strcasecmp((*j)->name.c_str(), (*i).c_str())) {
+							if (std::regex_match((*j)->name, std::regex(*i, std::regex::icase))) {
 								raid_drives.insert(*j);
-								break;
 							}
 						}
 					}
@@ -563,14 +620,14 @@ RAID * const ParseRAID(yaml_parser_t & parser, Events & events, const Drives & d
 					}
 				       	return new RAID_4(name, data_drives, parity_drives, stripe_width);
 				}
-				if (!strcasecmp("RAID_DP", type.c_str())) {
+				if (std::regex_match(type, std::regex("RAID_DP", std::regex::icase))) {
 					Drives raid_drives;
 					for (std::vector<std::string>::const_iterator i = drive_names.begin(); i != drive_names.end(); i++) {
 						// std::cout << *i << std::endl;
 						for (Drives::const_iterator j = drives.begin(); j != drives.end(); j++) {
-							if (!strcasecmp((*j)->name.c_str(), (*i).c_str())) {
+							if (std::regex_match((*j)->name, std::regex(*i, std::regex::icase))) {
+							       	// std::cout << (*j)->name << std::endl;
 								raid_drives.insert(*j);
-								break;
 							}
 						}
 					}
@@ -600,14 +657,12 @@ RAID * const ParseRAID(yaml_parser_t & parser, Events & events, const Drives & d
 						value = (char *)e.data.scalar.value;
 						// std::cout << "VALUE " << value <<std::endl;
 						expect_key = true;
-					       	if (!strcasecmp("name", key.c_str())) {
+						if (std::regex_match(key, std::regex("name", std::regex::icase))) {
 						       	name = value;
-						} else if (!strcasecmp("type", key.c_str())) {
+						} else if (std::regex_match(key, std::regex("type", std::regex::icase))) {
 						       	type = value;
-						} else if (!strcasecmp("stripe_width", key.c_str())) {
+						} else if (std::regex_match(key, std::regex("stripe_width", std::regex::icase))) {
 						       	stripe_width = std::stoul(value);
-						// } else if (!strcasecmp("parity_servers", key.c_str())) {
-						       	// n_parity_servers = std::stoul(value);
 					       	} else {
 						       	assert(0);
 						}
@@ -615,7 +670,7 @@ RAID * const ParseRAID(yaml_parser_t & parser, Events & events, const Drives & d
 				}
 				break;		       	
 			case YAML_SEQUENCE_START_EVENT:
-			       	if (!strcasecmp("drives", key.c_str())) {
+			       	if (std::regex_match(key, std::regex("drives", std::regex::icase))) {
 					drive_names = GetStrings(parser);
 				} else {
 				       	assert(0);
@@ -632,15 +687,16 @@ RAID * const ParseRAID(yaml_parser_t & parser, Events & events, const Drives & d
 	return NULL;
 }
 
-HBA * const ParseHBA(yaml_parser_t & parser, Events & events, IOModules & ioms) {
+Port * const ParsePort(yaml_parser_t & parser, IOModules & ioms) {
 	yaml_event_t e;
 	std::string key;
 	std::string value;
 	uint16_t in_mapping = 0;
 	bool expect_key = false;
-	std::string name = "hba";
+	std::string name = "port";
 	std::string iom_name = "iom";
 	uint64_t max_iops = 1000000;
+	double mbps = 0;
 	while (true) {
 		if (!yaml_parser_parse(&parser, &e)) {
 		       	assert(0);
@@ -659,10 +715,10 @@ HBA * const ParseHBA(yaml_parser_t & parser, Events & events, IOModules & ioms) 
 				if (!in_mapping) {
 					IOModules shelf_ioms;
 					for (IOModules::const_iterator j = ioms.begin(); j != ioms.end(); j++) {
-					       	if (!strcasecmp((*j)->name.c_str(), iom_name.c_str())) {
-						       	HBA * const hba = new HBA(name, uint64_t(1000000 / double(max_iops)));
-							*hba = *j;
-							return hba;
+					       	if (std::regex_match((*j)->name, std::regex(iom_name, std::regex::icase))) {
+						       	Port * const port = new Port(name, uint64_t(1000000 / double(max_iops)), mbps);
+							*port = *j;
+							return port;
 					       	}
 				       	}
 					assert(0);
@@ -678,12 +734,14 @@ HBA * const ParseHBA(yaml_parser_t & parser, Events & events, IOModules & ioms) 
 						value = (char *)e.data.scalar.value;
 						// std::cout << "VALUE " << value <<std::endl;
 						expect_key = true;
-					       	if (!strcasecmp("name", key.c_str())) {
+						if (std::regex_match(key, std::regex("name", std::regex::icase))) {
 						       	name = value;
-						} else if (!strcasecmp("iom", key.c_str())) {
+						} else if (std::regex_match(key, std::regex("iom", std::regex::icase))) {
 						       	iom_name = value;
-						} else if (!strcasecmp("max_iops", key.c_str())) {
+						} else if (std::regex_match(key, std::regex("max_iops", std::regex::icase))) {
 						       	max_iops = std::stoul(value);
+						} else if (std::regex_match(key, std::regex("mbps", std::regex::icase))) {
+						       	mbps = std::stod(value);
 					       	} else {
 						       	assert(0);
 						}
@@ -700,8 +758,7 @@ HBA * const ParseHBA(yaml_parser_t & parser, Events & events, IOModules & ioms) 
 	return NULL;
 }
 
-
-IOModule * const ParseIOModule(yaml_parser_t & parser, Events & events) {
+void ParseIOModules(yaml_parser_t & parser, IOModules & ioms) {
 	yaml_event_t e;
 	std::string key;
 	std::string value;
@@ -709,6 +766,8 @@ IOModule * const ParseIOModule(yaml_parser_t & parser, Events & events) {
 	bool expect_key = false;
 	std::string name = "iom";
 	uint64_t max_iops = 1000000;
+	double mbps = 0;
+	uint16_t instances = 1;
 	while (true) {
 		if (!yaml_parser_parse(&parser, &e)) {
 		       	assert(0);
@@ -725,7 +784,11 @@ IOModule * const ParseIOModule(yaml_parser_t & parser, Events & events) {
 				in_mapping--;
 				// std::cout << in_mapping << std::endl;
 				if (!in_mapping) {
-					return new IOModule(name, uint64_t(1000000 / double(max_iops)));
+					for (uint16_t i = 0; i < instances; i++) {
+					       	ioms.insert(new IOModule(name + std::to_string(i + 1),
+								       	uint64_t(1000000 / double(max_iops)), mbps));
+					}
+					return;
 				}
 				break;
 			case YAML_SCALAR_EVENT:
@@ -738,10 +801,73 @@ IOModule * const ParseIOModule(yaml_parser_t & parser, Events & events) {
 						value = (char *)e.data.scalar.value;
 						// std::cout << "VALUE " << value <<std::endl;
 						expect_key = true;
-					       	if (!strcasecmp("name", key.c_str())) {
+						if (std::regex_match(key, std::regex("name", std::regex::icase))) {
 						       	name = value;
-						} else if (!strcasecmp("max_iops", key.c_str())) {
+						} else if (std::regex_match(key, std::regex("max_iops", std::regex::icase))) {
 						       	max_iops = std::stoul(value);
+						} else if (std::regex_match(key, std::regex("mbps", std::regex::icase))) {
+						       	mbps = std::stod(value);
+						} else if (std::regex_match(key, std::regex("instances", std::regex::icase))) {
+						       	instances = std::stoul(value);
+					       	} else {
+						       	assert(0);
+						}
+					}
+				}
+				break;
+		       	default:
+			       	std::cout << e.type <<std::endl;
+			       	assert(0);
+	       	}
+		yaml_event_delete(&e);
+       	}
+	assert(0);
+}
+
+IOModule * const ParseIOModule(yaml_parser_t & parser) {
+	yaml_event_t e;
+	std::string key;
+	std::string value;
+	uint16_t in_mapping = 0;
+	bool expect_key = false;
+	std::string name = "iom";
+	uint64_t max_iops = 1000000;
+	double mbps = 0;
+	while (true) {
+		if (!yaml_parser_parse(&parser, &e)) {
+		       	assert(0);
+	       	}
+	       	switch (e.type) {
+			case YAML_MAPPING_START_EVENT:
+				// std::cout << e.data.mapping_start.style << std::endl;
+				expect_key = true;
+				in_mapping += 1;
+				// std::cout << in_mapping << std::endl;
+				break;
+			case YAML_MAPPING_END_EVENT:
+				assert(in_mapping);
+				in_mapping--;
+				// std::cout << in_mapping << std::endl;
+				if (!in_mapping) {
+					return new IOModule(name, uint64_t(1000000 / double(max_iops)), mbps);
+				}
+				break;
+			case YAML_SCALAR_EVENT:
+				if (e.data.scalar.value) {
+				        if (expect_key) {
+						key = (char *)e.data.scalar.value;
+						// std::cout << "KEY " << key <<std::endl;
+						expect_key = false;
+					} else {
+						value = (char *)e.data.scalar.value;
+						// std::cout << "VALUE " << value <<std::endl;
+						expect_key = true;
+						if (std::regex_match(key, std::regex("name", std::regex::icase))) {
+						       	name = value;
+						} else if (std::regex_match(key, std::regex("max_iops", std::regex::icase))) {
+						       	max_iops = std::stoul(value);
+						} else if (std::regex_match(key, std::regex("mbps", std::regex::icase))) {
+						       	mbps = std::stod(value);
 					       	} else {
 						       	assert(0);
 						}
@@ -758,10 +884,10 @@ IOModule * const ParseIOModule(yaml_parser_t & parser, Events & events) {
 	return NULL;
 }
 
-Filer * const ParseFiler(yaml_parser_t & parser, Controllers & controllers) {
+HBA * const ParseHBA(yaml_parser_t & parser, Ports & ports) {
 	yaml_event_t e;
-	std::vector<std::string> ctrl_names;
-	std::string name = "generator";
+	std::vector<std::string> port_names;
+	std::string name = "hba";
 	uint16_t in_mapping = 0;
 	bool expect_key = false;
 	std::string key;
@@ -788,7 +914,7 @@ Filer * const ParseFiler(yaml_parser_t & parser, Controllers & controllers) {
 						value = (char *)e.data.scalar.value;
 						// std::cout << "VALUE " << value <<std::endl;
 						expect_key = true;
-					       	if (!strcasecmp("name", key.c_str())) {
+						if (std::regex_match(key, std::regex("name", std::regex::icase))) {
 						       	name = value;
 					       	} else {
 						       	assert(0);
@@ -797,7 +923,78 @@ Filer * const ParseFiler(yaml_parser_t & parser, Controllers & controllers) {
 				}
 				break;
 			case YAML_SEQUENCE_START_EVENT:
-			       	if (!strcasecmp("controllers", key.c_str())) {
+			       	if (std::regex_match(key, std::regex("ports", std::regex::icase))) {
+				       	port_names = GetStrings(parser);
+				} else {
+				       	assert(0);
+				}
+			       	expect_key = true;
+				break;
+			case YAML_MAPPING_END_EVENT:
+				{
+				       	HBA * const hba = new HBA(name);
+					for (std::vector<std::string>::const_iterator i = port_names.begin(); i != port_names.end(); i++) {
+						// std::cout << *i << std::endl;
+						for (Ports::const_iterator j = ports.begin(); j != ports.end(); j++) {
+							if (std::regex_match((*j)->name, std::regex(*i, std::regex::icase))) {
+								*hba = *j;
+							}
+						}
+					}
+				       	yaml_event_delete(&e);
+				       	return hba;
+				}
+				break;
+		       	default:
+			       	std::cout << e.type <<std::endl;
+			       	assert(0);
+	       	}
+		yaml_event_delete(&e);
+	}
+	assert(0);
+	return NULL;
+}
+
+Filer * const ParseFiler(yaml_parser_t & parser, Controllers & controllers) {
+	yaml_event_t e;
+	std::vector<std::string> ctrl_names;
+	std::string name = "filer";
+	uint16_t in_mapping = 0;
+	bool expect_key = false;
+	std::string key;
+	std::string value;
+	while (true) {
+		if (!yaml_parser_parse(&parser, &e)) {
+		       	assert(0);
+	       	}
+	       	switch (e.type) {
+			case YAML_MAPPING_START_EVENT:
+				// std::cout << e.data.mapping_start.style << std::endl;
+				expect_key = true;
+				in_mapping += 1;
+				// std::cout << in_mapping << std::endl;
+				break;
+			case YAML_SCALAR_EVENT:
+				if (e.data.scalar.value) {
+				       	// std::cout << e.data.scalar.value << " " << e.data.scalar.style << std::endl;
+				        if (expect_key) {
+						key = (char *)e.data.scalar.value;
+						// std::cout << "KEY " << key <<std::endl;
+						expect_key = false;
+					} else {
+						value = (char *)e.data.scalar.value;
+						// std::cout << "VALUE " << value <<std::endl;
+						expect_key = true;
+						if (std::regex_match(key, std::regex("name", std::regex::icase))) {
+						       	name = value;
+					       	} else {
+						       	assert(0);
+						}
+					}
+				}
+				break;
+			case YAML_SEQUENCE_START_EVENT:
+			       	if (std::regex_match(key, std::regex("controllers", std::regex::icase))) {
 				       	ctrl_names = GetStrings(parser);
 				} else {
 				       	assert(0);
@@ -810,9 +1007,8 @@ Filer * const ParseFiler(yaml_parser_t & parser, Controllers & controllers) {
 					for (std::vector<std::string>::const_iterator i = ctrl_names.begin(); i != ctrl_names.end(); i++) {
 						// std::cout << *i << std::endl;
 						for (Controllers::const_iterator j = controllers.begin(); j != controllers.end(); j++) {
-							if (!strcasecmp((*j)->name.c_str(), (*i).c_str())) {
+							if (std::regex_match((*j)->name, std::regex(*i, std::regex::icase))) {
 								*filer = *j;
-								break;
 							}
 						}
 					}
@@ -877,7 +1073,7 @@ Generator * const ParseGenerator(yaml_parser_t & parser, RAIDs & raids) {
 					}
 				       	yaml_event_delete(&e);
 					for (RAIDs::const_iterator raid = raids.begin(); raid != raids.end(); raid++) {
-						if (!strcasecmp(raid_name.c_str(), (*raid)->name.c_str())) {
+						if (std::regex_match((*raid)->name, std::regex(raid_name, std::regex::icase))) {
 						       	if (b2b) 
 								return new QueueGenerator(name, size, percent_read, percent_random,
 											       	qdepth, *raid);
@@ -901,23 +1097,23 @@ Generator * const ParseGenerator(yaml_parser_t & parser, RAIDs & raids) {
 						value = (char *)e.data.scalar.value;
 						// std::cout << "VALUE " << value <<std::endl;
 						expect_key = true;
-					       	if (!strcasecmp("queue_depth", key.c_str())) {
+						if (std::regex_match(key, std::regex("queue_depth", std::regex::icase))) {
 						       	b2b = true;
 						       	qdepth = std::stoul(value);
-					       	} else if (!strcasecmp("ia_time", key.c_str())) {
+						} else if (std::regex_match(key, std::regex("ia_time", std::regex::icase))) {
 						       	b2b = false;
 						       	ia_time = std::stoul(value);
-					       	} else if (!strcasecmp("percent_read", key.c_str())) {
+						} else if (std::regex_match(key, std::regex("percent_read", std::regex::icase))) {
 						       	percent_read = std::stoul(value);
-					       	} else if (!strcasecmp("percent_random", key.c_str())) {
+						} else if (std::regex_match(key, std::regex("percent_random", std::regex::icase))) {
 						       	percent_random = std::stoul(value);
-					       	} else if (!strcasecmp("size", key.c_str())) {
+						} else if (std::regex_match(key, std::regex("size", std::regex::icase))) {
 						       	size = std::stoul(value);
-					       	} else if (!strcasecmp("name", key.c_str())) {
+						} else if (std::regex_match(key, std::regex("name", std::regex::icase))) {
 						       	name = value;
-					       	} else if (!strcasecmp("raid", key.c_str())) {
+						} else if (std::regex_match(key, std::regex("raid", std::regex::icase))) {
 						       	raid_name = value;
-					       	} else if (!strcasecmp("iops", key.c_str())) {
+						} else if (std::regex_match(key, std::regex("iops", std::regex::icase))) {
 						       	b2b = false;
 						       	ia_time = (unsigned int)(1000000.0 / std::stod(value));
 					       	} else {
@@ -943,11 +1139,12 @@ int main(int argc, char **argv) {
 	RAIDs raids;
 	Drives drives;
 	IOModules ioms;
-	HBAs hbas;
+	Ports ports;
 	Controllers controllers;
 	Generators generators;
 	Shelves shelves;
 	Filers filers;
+	HBAs hbas;
 	uint64_t simulation_time = 0;
 
 	FILE * const config_fp = fopen("config.yaml", "r");
@@ -970,23 +1167,30 @@ int main(int argc, char **argv) {
 				       	if (!strcasecmp("generator", (char *)e.data.scalar.value)) {
 						generators.insert(ParseGenerator(parser, raids));
 				       	} else if (!strcasecmp("raid", (char *)e.data.scalar.value)) {
-					       	raids.insert(ParseRAID(parser, events, drives));
+					       	raids.insert(ParseRAID(parser, drives));
 				       	} else if (!strcasecmp("drive", (char *)e.data.scalar.value)) {
-					       	drives.insert(ParseDrive(parser, events));
+					       	drives.insert(ParseDrive(parser));
+				       	} else if (!strcasecmp("drives", (char *)e.data.scalar.value)) {
+					       	ParseDrives(parser, drives);
 				       	} else if (!strcasecmp("shelf", (char *)e.data.scalar.value)) {
-					       	shelves.insert(ParseShelf(parser, events, drives, ioms));
+					       	shelves.insert(ParseShelf(parser, drives, ioms));
 				       	} else if (!strcasecmp("iom", (char *)e.data.scalar.value)) {
-					       	ioms.insert(ParseIOModule(parser, events));
-				       	} else if (!strcasecmp("hba", (char *)e.data.scalar.value)) {
-					       	hbas.insert(ParseHBA(parser, events, ioms));
+					       	ioms.insert(ParseIOModule(parser));
+				       	} else if (!strcasecmp("ioms", (char *)e.data.scalar.value)) {
+					       	ParseIOModules(parser, ioms);
+				       	} else if (!strcasecmp("port", (char *)e.data.scalar.value)) {
+					       	ports.insert(ParsePort(parser, ioms));
 				       	} else if (!strcasecmp("controller", (char *)e.data.scalar.value)) {
-					       	controllers.insert(ParseController(parser, events, generators, hbas));
+					       	controllers.insert(ParseController(parser, generators, hbas));
 				       	} else if (!strcasecmp("filer", (char *)e.data.scalar.value)) {
 					       	filers.insert(ParseFiler(parser, controllers));
+				       	} else if (!strcasecmp("hba", (char *)e.data.scalar.value)) {
+					       	hbas.insert(ParseHBA(parser, ports));
 				       	} else if (expect_value) {
 						if (!strcasecmp("simulation_time", key.c_str())) {
 						       	simulation_time = std::stoull((char *)e.data.scalar.value);
 						} else {
+							std::cout << e.data.scalar.value << std::endl;
 						       	assert(0);
 						}
 						expect_value = false;
@@ -1046,7 +1250,7 @@ int main(int argc, char **argv) {
 					}
 				}
 				break;
-		       	case EvTyHBAFinProc:
+		       	case EvTyPortFinProc:
 				{
 				       	ServerEvents ses = e->GetServer()->Start(t);
 					for (ServerEvents::iterator i = ses.begin(); i != ses.end(); i++) {
@@ -1073,49 +1277,80 @@ int main(int argc, char **argv) {
 					}
 					for (IOModules::iterator iom = ioms.begin(); iom != ioms.end(); iom++) {
 						if (task->SERVERS().end() != task->SERVERS().find(*iom)) {
-							finish_data = (*iom)->Finish(t, task);
-							Task * const itask = finish_data.first;
-						       	assert(itask);
-						       	if (finish_data.second) {
-							       	events.push_back(finish_data.second);
-							       	std::push_heap(events.begin(), events.end(), cmp);
-						       	}
-						       	for (HBAs::iterator hba = hbas.begin(); hba != hbas.end(); hba++) {
-							       	if (itask->SERVERS().end() != itask->SERVERS().find(*hba)) {
-								       	finish_data = (*hba)->Finish(t, task);
-								       	Task * const htask = finish_data.first;
-								       	assert(htask);
-								       	if (finish_data.second) {
-									       	events.push_back(finish_data.second);
-									       	std::push_heap(events.begin(), events.end(), cmp);
-								       	}
-									for (Controllers::iterator ctrl = controllers.begin();
-											ctrl != controllers.end(); ctrl++) {
-										if ((*ctrl)->HBAS().end() != (*ctrl)->HBAS().find(*hba)) {
-										       	Task *ctask = (*ctrl)->EndTask(t, htask);
-										       	if (ctask) {
-												// std::cout << ctask << std::endl;
-												Generator * const generator = ctask->generator;
-												RAID * const raid = generator->raid;
-												Tasks tasks = raid->Finish(t, ctask);
-												// std::cout << tasks << std::endl;
-												for (Tasks::iterator i = tasks.begin(); i != tasks.end(); i++) {
-												       	Task * const gtask = (*i)->generator->EndTask(*i, t);
-												       	if (gtask) {
-													       	(*ctrl)->ScheduleTask(gtask->generator->raid,
-															       	gtask, events, t);
-												       	}
-												}
-										       	}
-										}
-									}
-									break;
-								}
-							}
+						       	ServerEvent * new_event = new ServerEvent(t, EvTyIOMEnd, *iom, task);
+						       	events.push_back(new_event);
+						       	std::push_heap(events.begin(), events.end(), cmp);
 							break;
 						}
 					}
 				}
+				break;
+		       	case EvTyIOMEnd:
+				{
+					std::pair<Task *, Event *> finish_data = e->GetServer()->Finish(t, ((ServerEvent *)e)->task);
+					Task * const task = finish_data.first;
+					assert(task);
+					if (finish_data.second) {
+					       	events.push_back(finish_data.second);
+					       	std::push_heap(events.begin(), events.end(), cmp);
+					}
+					for (Ports::iterator port = ports.begin(); port != ports.end(); port++) {
+					       	if (task->SERVERS().end() != task->SERVERS().find(*port)) {
+						       	ServerEvent * new_event = new ServerEvent(t, EvTyPortEnd, *port, task);
+						       	events.push_back(new_event);
+						       	std::push_heap(events.begin(), events.end(), cmp);
+							break;
+						}
+					}
+				}
+				break;
+		       	case EvTyPortEnd:
+				{
+					std::pair<Task *, Event *> finish_data = e->GetServer()->Finish(t, ((ServerEvent *)e)->task);
+					Task * const task = finish_data.first;
+					assert(task);
+					if (finish_data.second) {
+					       	events.push_back(finish_data.second);
+					       	std::push_heap(events.begin(), events.end(), cmp);
+					}
+					bool done = false;
+					for (Controllers::iterator ctrl = controllers.begin();
+							ctrl != controllers.end(); ctrl++) {
+					       	for (HBAs::iterator hba = (*ctrl)->HBAS().begin();
+							       	hba != (*ctrl)->HBAS().end(); hba++) {
+						       	for (Ports::iterator port = (*hba)->PORTS().begin(); port != (*hba)->PORTS().end(); port++) {
+								if (task->SERVERS().end() != task->SERVERS().find(*port)) {
+								       	ControllerEvent * new_event = new ControllerEvent(t, EvTyCtrlEnd, *ctrl, task);
+								       	events.push_back(new_event);
+								       	std::push_heap(events.begin(), events.end(), cmp);
+								       	done = true;
+								       	break;
+								}
+							}
+							if (done) break;
+						}
+					       	if (done) break;
+					}
+				}
+				break;
+		       	case EvTyCtrlEnd:
+				{
+				       	Task *task = e->GetController()->EndTask(t, ((ControllerEvent *)e)->task);
+				       	if (task) {
+					       	// std::cout << task << std::endl;
+						Generator * const generator = task->generator;
+					       	RAID * const raid = generator->raid;
+					       	Tasks tasks = raid->Finish(t, task);
+					       	// std::cout << tasks << std::endl;
+						for (Tasks::iterator i = tasks.begin(); i != tasks.end(); i++) {
+						       	Task * const gtask = (*i)->generator->EndTask(*i, t);
+						       	if (gtask) {
+							       	e->GetController()->ScheduleTask(gtask->generator->raid,
+									       	gtask, events, t);
+						       	}
+					       	}
+				       	}
+			       	}
 				break;
 			default:
 				throw e;
@@ -1144,6 +1379,10 @@ int main(int argc, char **argv) {
 	for (HBAs::const_iterator hba = hbas.begin(); hba != hbas.end(); hba++) {
 		(*hba)->print(std::cout, t);
 	       	delete *hba;
+	}
+	for (Ports::const_iterator port = ports.begin(); port != ports.end(); port++) {
+		(*port)->print(std::cout, t);
+	       	delete *port;
 	}
 	for (Controllers::const_iterator cntlr = controllers.begin(); cntlr != controllers.end(); cntlr++) {
 		(*cntlr)->print(std::cout, t);

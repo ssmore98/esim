@@ -113,7 +113,8 @@ Shelf & Shelf::operator=(Drive * const drive) {
 	return *this;
 }
 
-IOModule::IOModule(const std::string & name, const uint64_t & p_service_time): Server(name), shelf(NULL), service_time(p_service_time) {
+IOModule::IOModule(const std::string & name, const uint64_t & p_service_time, const double & p_mbps):
+       	Server(name), shelf(NULL), service_time(p_service_time), mbps(p_mbps) {
 }
 
 IOModule::~IOModule() {
@@ -150,13 +151,18 @@ void IOModules::print(std::ostream & o, const uint64_t & current_time) const {
 	}
 }
 
+uint64_t IOModule::GetServiceTime(Task * const task) {
+	const uint64_t xtime = double(task->size * 1000 * 1000) / (1024 * 1024 * mbps);
+	return (xtime > service_time ? xtime : service_time);
+}
+
 ServerEvents IOModule::Submit(Task * const task, const uint64_t & t) {
 	assert(task->SERVERS().end() != task->SERVERS().find(this));
 	taskq.push_back(task);
-       	metrics.StartTask(taskq.size(), service_time, task->size);
+       	metrics.StartTask(taskq.size(), GetServiceTime(task), task->size);
 	if (1 == taskq.size()) {
 		ServerEvents retval;
-	       	retval.insert(new ServerEvent(t + service_time, EvTyIOMFinProc, this));
+	       	retval.insert(new ServerEvent(t + GetServiceTime(task), EvTyIOMFinProc, this, task));
 		return retval;
 	}
 	return ServerEvents();
@@ -168,7 +174,7 @@ ServerEvents IOModule::Start(const uint64_t & t) {
 	taskq.pop_front();
        	ServerEvents retval;
 	if (0 < taskq.size()) {
-	       	retval.insert(new ServerEvent(t + service_time, EvTyIOMFinProc, this));
+	       	retval.insert(new ServerEvent(t + GetServiceTime(taskq.front()), EvTyIOMFinProc, this, taskq.front()));
 	}
 	for (Drives::iterator drive = shelf->DRIVES().begin(); drive != shelf->DRIVES().end(); drive++) {
 		if (finished_task->SERVERS().end() != finished_task->SERVERS().find(*drive)) {
@@ -201,7 +207,7 @@ ServerEvents SSD_PM1733a::Submit(Task * const task, const uint64_t & t) {
 	       	const uint64_t xtime = GetServiceTime(task);
 		metrics.StartTask(1, xtime, task->size);
 	       	ServerEvents retval;
-	       	retval.insert(new ServerEvent(t + xtime, EvTyServDiskEnd, this));
+	       	retval.insert(new ServerEvent(t + xtime, EvTyServDiskEnd, this, task));
 		return retval;
 	}
 	return ServerEvents();
@@ -223,7 +229,7 @@ std::pair<Task *, Event *> SSD_PM1733a::Finish(const uint64_t & t, Task * const 
 	       	Task * const next_task = taskq.front();
 	       	const uint64_t xtime = GetServiceTime(next_task);
 		metrics.StartTask(taskq.size(), xtime, next_task->size);
-	       	next_event = new ServerEvent(t + xtime, EvTyServDiskEnd, this);
+	       	next_event = new ServerEvent(t + xtime, EvTyServDiskEnd, this, next_task);
 	}
 	return std::pair<Task *, Event *>(finished_task, next_event);
 }

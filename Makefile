@@ -1,6 +1,6 @@
 CC = g++ -std=c++11
 CFLAGS = -Wall -Werror -ggdb3 # -O2
-C_FILES = sim.cpp event.cpp generator.cpp task.cpp controller.cpp hba.cpp server.cpp raid.cpp metrics.cpp
+C_FILES = sim.cpp event.cpp generator.cpp task.cpp controller.cpp port.cpp server.cpp raid.cpp metrics.cpp
 O_FILES = $(C_FILES:.cpp=.o)
 DEFAULT_INCLUDES =  -I/usr/include/c++/9 -I/usr/include/x86_64-linux-gnu/c++/9 -I/usr/include/c++/9/backward \
 		    -I/usr/lib/gcc/x86_64-linux-gnu/9/include -I/usr/local/include -I/usr/include/x86_64-linux-gnu -I/usr/include
@@ -55,7 +55,8 @@ sim.o: /usr/include/c++/9/ext/alloc_traits.h
 sim.o: /usr/include/c++/9/bits/stl_map.h
 sim.o: /usr/include/c++/9/bits/stl_multimap.h
 sim.o: /usr/include/c++/9/bits/range_access.h
-sim.o: /usr/include/c++/9/bits/erase_if.h /usr/include/yaml.h
+sim.o: /usr/include/c++/9/bits/erase_if.h /usr/include/c++/9/regex
+sim.o: /usr/include/c++/9/bits/c++0x_warning.h /usr/include/yaml.h
 sim.o: /usr/include/c++/9/stdlib.h /usr/include/stdlib.h
 sim.o: /usr/include/x86_64-linux-gnu/bits/libc-header-start.h
 sim.o: /usr/lib/gcc/x86_64-linux-gnu/9/include/stddef.h
@@ -102,8 +103,8 @@ sim.o: /usr/include/x86_64-linux-gnu/bits/sys_errlist.h /usr/include/string.h
 sim.o: /usr/include/x86_64-linux-gnu/bits/types/locale_t.h
 sim.o: /usr/include/x86_64-linux-gnu/bits/types/__locale_t.h
 sim.o: /usr/include/strings.h server.h /usr/include/c++/9/cstdint
-sim.o: /usr/include/c++/9/bits/c++0x_warning.h /usr/include/c++/9/random
-sim.o: /usr/include/c++/9/set /usr/include/c++/9/bits/stl_set.h
+sim.o: /usr/include/c++/9/random /usr/include/c++/9/set
+sim.o: /usr/include/c++/9/bits/stl_set.h
 sim.o: /usr/include/c++/9/bits/stl_multiset.h task.h /usr/include/c++/9/deque
 sim.o: /usr/include/c++/9/bits/stl_construct.h
 sim.o: /usr/include/c++/9/bits/stl_uninitialized.h
@@ -162,7 +163,7 @@ sim.o: /usr/include/c++/9/bits/stl_tempbuf.h /usr/include/c++/9/vector
 sim.o: /usr/include/c++/9/bits/stl_vector.h
 sim.o: /usr/include/c++/9/bits/stl_bvector.h
 sim.o: /usr/include/c++/9/bits/vector.tcc metrics.h
-sim.o: /usr/include/c++/9/cinttypes generator.h raid.h hba.h controller.h
+sim.o: /usr/include/c++/9/cinttypes generator.h raid.h port.h controller.h
 event.o: event.h /usr/include/c++/9/cstdint
 event.o: /usr/include/c++/9/bits/c++0x_warning.h /usr/include/c++/9/cassert
 event.o: /usr/include/x86_64-linux-gnu/c++/9/bits/c++config.h
@@ -206,7 +207,89 @@ event.o: /usr/include/c++/9/bits/stl_uninitialized.h
 event.o: /usr/include/c++/9/bits/stl_vector.h
 event.o: /usr/include/c++/9/bits/stl_bvector.h
 event.o: /usr/include/c++/9/bits/range_access.h
-event.o: /usr/include/c++/9/bits/vector.tcc
+event.o: /usr/include/c++/9/bits/vector.tcc /usr/include/c++/9/iostream
+event.o: /usr/include/c++/9/ostream /usr/include/c++/9/ios
+event.o: /usr/include/c++/9/iosfwd /usr/include/c++/9/bits/stringfwd.h
+event.o: /usr/include/c++/9/bits/postypes.h /usr/include/c++/9/cwchar
+event.o: /usr/include/wchar.h
+event.o: /usr/include/x86_64-linux-gnu/bits/libc-header-start.h
+event.o: /usr/include/x86_64-linux-gnu/bits/floatn.h
+event.o: /usr/include/x86_64-linux-gnu/bits/floatn-common.h
+event.o: /usr/lib/gcc/x86_64-linux-gnu/9/include/stddef.h
+event.o: /usr/lib/gcc/x86_64-linux-gnu/9/include/stdarg.h
+event.o: /usr/include/x86_64-linux-gnu/bits/wchar.h
+event.o: /usr/include/x86_64-linux-gnu/bits/types/wint_t.h
+event.o: /usr/include/x86_64-linux-gnu/bits/types/mbstate_t.h
+event.o: /usr/include/x86_64-linux-gnu/bits/types/__mbstate_t.h
+event.o: /usr/include/x86_64-linux-gnu/bits/types/__FILE.h
+event.o: /usr/include/x86_64-linux-gnu/bits/types/FILE.h
+event.o: /usr/include/x86_64-linux-gnu/bits/types/locale_t.h
+event.o: /usr/include/x86_64-linux-gnu/bits/types/__locale_t.h
+event.o: /usr/include/c++/9/bits/char_traits.h
+event.o: /usr/include/c++/9/bits/localefwd.h
+event.o: /usr/include/x86_64-linux-gnu/c++/9/bits/c++locale.h
+event.o: /usr/include/c++/9/clocale /usr/include/locale.h
+event.o: /usr/include/x86_64-linux-gnu/bits/locale.h
+event.o: /usr/include/c++/9/cctype /usr/include/ctype.h
+event.o: /usr/include/x86_64-linux-gnu/bits/types.h
+event.o: /usr/include/x86_64-linux-gnu/bits/timesize.h
+event.o: /usr/include/x86_64-linux-gnu/bits/typesizes.h
+event.o: /usr/include/x86_64-linux-gnu/bits/time64.h
+event.o: /usr/include/x86_64-linux-gnu/bits/endian.h
+event.o: /usr/include/x86_64-linux-gnu/bits/endianness.h
+event.o: /usr/include/c++/9/bits/ios_base.h
+event.o: /usr/include/c++/9/ext/atomicity.h
+event.o: /usr/include/x86_64-linux-gnu/c++/9/bits/gthr.h
+event.o: /usr/include/x86_64-linux-gnu/c++/9/bits/gthr-default.h
+event.o: /usr/include/pthread.h /usr/include/sched.h
+event.o: /usr/include/x86_64-linux-gnu/bits/types/time_t.h
+event.o: /usr/include/x86_64-linux-gnu/bits/types/struct_timespec.h
+event.o: /usr/include/x86_64-linux-gnu/bits/sched.h
+event.o: /usr/include/x86_64-linux-gnu/bits/types/struct_sched_param.h
+event.o: /usr/include/x86_64-linux-gnu/bits/cpu-set.h /usr/include/time.h
+event.o: /usr/include/x86_64-linux-gnu/bits/time.h
+event.o: /usr/include/x86_64-linux-gnu/bits/types/clock_t.h
+event.o: /usr/include/x86_64-linux-gnu/bits/types/struct_tm.h
+event.o: /usr/include/x86_64-linux-gnu/bits/types/clockid_t.h
+event.o: /usr/include/x86_64-linux-gnu/bits/types/timer_t.h
+event.o: /usr/include/x86_64-linux-gnu/bits/types/struct_itimerspec.h
+event.o: /usr/include/x86_64-linux-gnu/bits/pthreadtypes.h
+event.o: /usr/include/x86_64-linux-gnu/bits/thread-shared-types.h
+event.o: /usr/include/x86_64-linux-gnu/bits/pthreadtypes-arch.h
+event.o: /usr/include/x86_64-linux-gnu/bits/struct_mutex.h
+event.o: /usr/include/x86_64-linux-gnu/bits/struct_rwlock.h
+event.o: /usr/include/x86_64-linux-gnu/bits/setjmp.h
+event.o: /usr/include/x86_64-linux-gnu/c++/9/bits/atomic_word.h
+event.o: /usr/include/c++/9/bits/locale_classes.h /usr/include/c++/9/string
+event.o: /usr/include/c++/9/bits/ostream_insert.h
+event.o: /usr/include/c++/9/bits/cxxabi_forced.h
+event.o: /usr/include/c++/9/bits/stl_function.h
+event.o: /usr/include/c++/9/backward/binders.h
+event.o: /usr/include/c++/9/bits/basic_string.h
+event.o: /usr/include/c++/9/bits/basic_string.tcc
+event.o: /usr/include/c++/9/bits/locale_classes.tcc
+event.o: /usr/include/c++/9/stdexcept /usr/include/c++/9/streambuf
+event.o: /usr/include/c++/9/bits/streambuf.tcc
+event.o: /usr/include/c++/9/bits/basic_ios.h
+event.o: /usr/include/c++/9/bits/locale_facets.h /usr/include/c++/9/cwctype
+event.o: /usr/include/wctype.h
+event.o: /usr/include/x86_64-linux-gnu/bits/wctype-wchar.h
+event.o: /usr/include/x86_64-linux-gnu/c++/9/bits/ctype_base.h
+event.o: /usr/include/c++/9/bits/streambuf_iterator.h
+event.o: /usr/include/x86_64-linux-gnu/c++/9/bits/ctype_inline.h
+event.o: /usr/include/c++/9/bits/locale_facets.tcc
+event.o: /usr/include/c++/9/bits/basic_ios.tcc
+event.o: /usr/include/c++/9/bits/ostream.tcc /usr/include/c++/9/istream
+event.o: /usr/include/c++/9/bits/istream.tcc /usr/include/c++/9/set
+event.o: /usr/include/c++/9/bits/stl_tree.h /usr/include/c++/9/bits/stl_set.h
+event.o: /usr/include/c++/9/bits/stl_multiset.h
+event.o: /usr/include/c++/9/bits/erase_if.h server.h
+event.o: /usr/include/c++/9/random /usr/include/c++/9/map
+event.o: /usr/include/c++/9/bits/stl_map.h
+event.o: /usr/include/c++/9/bits/stl_multimap.h task.h
+event.o: /usr/include/c++/9/deque /usr/include/c++/9/bits/stl_deque.h
+event.o: /usr/include/c++/9/bits/deque.tcc metrics.h
+event.o: /usr/include/c++/9/cinttypes generator.h raid.h
 generator.o: /usr/include/c++/9/chrono
 generator.o: /usr/include/c++/9/bits/c++0x_warning.h
 generator.o: /usr/include/c++/9/iostream
@@ -313,8 +396,8 @@ generator.o: /usr/include/x86_64-linux-gnu/c++/9/bits/ctype_inline.h
 generator.o: /usr/include/c++/9/bits/locale_facets.tcc
 generator.o: /usr/include/c++/9/bits/basic_ios.tcc
 generator.o: /usr/include/c++/9/bits/ostream.tcc /usr/include/c++/9/istream
-generator.o: /usr/include/c++/9/bits/istream.tcc server.h
-generator.o: /usr/include/c++/9/cstdint /usr/include/c++/9/random
+generator.o: /usr/include/c++/9/bits/istream.tcc /usr/include/c++/9/iomanip
+generator.o: server.h /usr/include/c++/9/cstdint /usr/include/c++/9/random
 generator.o: /usr/include/c++/9/map /usr/include/c++/9/bits/stl_tree.h
 generator.o: /usr/include/c++/9/bits/stl_map.h
 generator.o: /usr/include/c++/9/bits/stl_multimap.h
@@ -513,9 +596,7 @@ controller.o: /usr/include/c++/9/vector
 controller.o: /usr/include/c++/9/bits/stl_uninitialized.h
 controller.o: /usr/include/c++/9/bits/stl_vector.h
 controller.o: /usr/include/c++/9/bits/stl_bvector.h
-controller.o: /usr/include/c++/9/bits/vector.tcc task.h
-controller.o: /usr/include/c++/9/deque /usr/include/c++/9/bits/stl_deque.h
-controller.o: /usr/include/c++/9/bits/deque.tcc /usr/include/c++/9/iostream
+controller.o: /usr/include/c++/9/bits/vector.tcc /usr/include/c++/9/iostream
 controller.o: /usr/include/c++/9/ostream /usr/include/c++/9/ios
 controller.o: /usr/include/c++/9/iosfwd /usr/include/c++/9/bits/stringfwd.h
 controller.o: /usr/include/c++/9/bits/postypes.h /usr/include/c++/9/cwchar
@@ -587,131 +668,135 @@ controller.o: /usr/include/x86_64-linux-gnu/c++/9/bits/ctype_inline.h
 controller.o: /usr/include/c++/9/bits/locale_facets.tcc
 controller.o: /usr/include/c++/9/bits/basic_ios.tcc
 controller.o: /usr/include/c++/9/bits/ostream.tcc /usr/include/c++/9/istream
-controller.o: /usr/include/c++/9/bits/istream.tcc server.h
-controller.o: /usr/include/c++/9/map /usr/include/c++/9/bits/stl_map.h
-controller.o: /usr/include/c++/9/bits/stl_multimap.h metrics.h
-controller.o: /usr/include/c++/9/cinttypes raid.h hba.h
-hba.o: hba.h /usr/include/c++/9/set /usr/include/c++/9/bits/stl_tree.h
-hba.o: /usr/include/c++/9/bits/stl_algobase.h
-hba.o: /usr/include/x86_64-linux-gnu/c++/9/bits/c++config.h
-hba.o: /usr/include/x86_64-linux-gnu/c++/9/bits/os_defines.h
-hba.o: /usr/include/features.h /usr/include/stdc-predef.h
-hba.o: /usr/include/x86_64-linux-gnu/sys/cdefs.h
-hba.o: /usr/include/x86_64-linux-gnu/bits/wordsize.h
-hba.o: /usr/include/x86_64-linux-gnu/bits/long-double.h
-hba.o: /usr/include/x86_64-linux-gnu/gnu/stubs.h
-hba.o: /usr/include/x86_64-linux-gnu/c++/9/bits/cpu_defines.h
-hba.o: /usr/include/c++/9/bits/functexcept.h
-hba.o: /usr/include/c++/9/bits/exception_defines.h
-hba.o: /usr/include/c++/9/bits/cpp_type_traits.h
-hba.o: /usr/include/c++/9/ext/type_traits.h
-hba.o: /usr/include/c++/9/ext/numeric_traits.h
-hba.o: /usr/include/c++/9/bits/stl_pair.h /usr/include/c++/9/bits/move.h
-hba.o: /usr/include/c++/9/bits/concept_check.h
-hba.o: /usr/include/c++/9/bits/stl_iterator_base_types.h
-hba.o: /usr/include/c++/9/bits/stl_iterator_base_funcs.h
-hba.o: /usr/include/c++/9/debug/assertions.h
-hba.o: /usr/include/c++/9/bits/stl_iterator.h
-hba.o: /usr/include/c++/9/bits/ptr_traits.h /usr/include/c++/9/debug/debug.h
-hba.o: /usr/include/c++/9/bits/predefined_ops.h
-hba.o: /usr/include/c++/9/bits/allocator.h
-hba.o: /usr/include/x86_64-linux-gnu/c++/9/bits/c++allocator.h
-hba.o: /usr/include/c++/9/ext/new_allocator.h /usr/include/c++/9/new
-hba.o: /usr/include/c++/9/exception /usr/include/c++/9/bits/exception.h
-hba.o: /usr/include/c++/9/bits/memoryfwd.h
-hba.o: /usr/include/c++/9/bits/stl_function.h
-hba.o: /usr/include/c++/9/backward/binders.h
-hba.o: /usr/include/c++/9/ext/alloc_traits.h
-hba.o: /usr/include/c++/9/bits/stl_set.h
-hba.o: /usr/include/c++/9/bits/stl_multiset.h
-hba.o: /usr/include/c++/9/bits/range_access.h
-hba.o: /usr/include/c++/9/bits/erase_if.h server.h /usr/include/c++/9/cstdint
-hba.o: /usr/include/c++/9/bits/c++0x_warning.h /usr/include/c++/9/random
-hba.o: /usr/include/c++/9/map /usr/include/c++/9/bits/stl_map.h
-hba.o: /usr/include/c++/9/bits/stl_multimap.h task.h /usr/include/c++/9/deque
-hba.o: /usr/include/c++/9/bits/stl_construct.h
-hba.o: /usr/include/c++/9/bits/stl_uninitialized.h
-hba.o: /usr/include/c++/9/bits/stl_deque.h /usr/include/c++/9/bits/deque.tcc
-hba.o: /usr/include/c++/9/iostream /usr/include/c++/9/ostream
-hba.o: /usr/include/c++/9/ios /usr/include/c++/9/iosfwd
-hba.o: /usr/include/c++/9/bits/stringfwd.h /usr/include/c++/9/bits/postypes.h
-hba.o: /usr/include/c++/9/cwchar /usr/include/wchar.h
-hba.o: /usr/include/x86_64-linux-gnu/bits/libc-header-start.h
-hba.o: /usr/include/x86_64-linux-gnu/bits/floatn.h
-hba.o: /usr/include/x86_64-linux-gnu/bits/floatn-common.h
-hba.o: /usr/lib/gcc/x86_64-linux-gnu/9/include/stddef.h
-hba.o: /usr/lib/gcc/x86_64-linux-gnu/9/include/stdarg.h
-hba.o: /usr/include/x86_64-linux-gnu/bits/wchar.h
-hba.o: /usr/include/x86_64-linux-gnu/bits/types/wint_t.h
-hba.o: /usr/include/x86_64-linux-gnu/bits/types/mbstate_t.h
-hba.o: /usr/include/x86_64-linux-gnu/bits/types/__mbstate_t.h
-hba.o: /usr/include/x86_64-linux-gnu/bits/types/__FILE.h
-hba.o: /usr/include/x86_64-linux-gnu/bits/types/FILE.h
-hba.o: /usr/include/x86_64-linux-gnu/bits/types/locale_t.h
-hba.o: /usr/include/x86_64-linux-gnu/bits/types/__locale_t.h
-hba.o: /usr/include/c++/9/bits/char_traits.h
-hba.o: /usr/include/c++/9/bits/localefwd.h
-hba.o: /usr/include/x86_64-linux-gnu/c++/9/bits/c++locale.h
-hba.o: /usr/include/c++/9/clocale /usr/include/locale.h
-hba.o: /usr/include/x86_64-linux-gnu/bits/locale.h /usr/include/c++/9/cctype
-hba.o: /usr/include/ctype.h /usr/include/x86_64-linux-gnu/bits/types.h
-hba.o: /usr/include/x86_64-linux-gnu/bits/timesize.h
-hba.o: /usr/include/x86_64-linux-gnu/bits/typesizes.h
-hba.o: /usr/include/x86_64-linux-gnu/bits/time64.h
-hba.o: /usr/include/x86_64-linux-gnu/bits/endian.h
-hba.o: /usr/include/x86_64-linux-gnu/bits/endianness.h
-hba.o: /usr/include/c++/9/bits/ios_base.h /usr/include/c++/9/ext/atomicity.h
-hba.o: /usr/include/x86_64-linux-gnu/c++/9/bits/gthr.h
-hba.o: /usr/include/x86_64-linux-gnu/c++/9/bits/gthr-default.h
-hba.o: /usr/include/pthread.h /usr/include/sched.h
-hba.o: /usr/include/x86_64-linux-gnu/bits/types/time_t.h
-hba.o: /usr/include/x86_64-linux-gnu/bits/types/struct_timespec.h
-hba.o: /usr/include/x86_64-linux-gnu/bits/sched.h
-hba.o: /usr/include/x86_64-linux-gnu/bits/types/struct_sched_param.h
-hba.o: /usr/include/x86_64-linux-gnu/bits/cpu-set.h /usr/include/time.h
-hba.o: /usr/include/x86_64-linux-gnu/bits/time.h
-hba.o: /usr/include/x86_64-linux-gnu/bits/types/clock_t.h
-hba.o: /usr/include/x86_64-linux-gnu/bits/types/struct_tm.h
-hba.o: /usr/include/x86_64-linux-gnu/bits/types/clockid_t.h
-hba.o: /usr/include/x86_64-linux-gnu/bits/types/timer_t.h
-hba.o: /usr/include/x86_64-linux-gnu/bits/types/struct_itimerspec.h
-hba.o: /usr/include/x86_64-linux-gnu/bits/pthreadtypes.h
-hba.o: /usr/include/x86_64-linux-gnu/bits/thread-shared-types.h
-hba.o: /usr/include/x86_64-linux-gnu/bits/pthreadtypes-arch.h
-hba.o: /usr/include/x86_64-linux-gnu/bits/struct_mutex.h
-hba.o: /usr/include/x86_64-linux-gnu/bits/struct_rwlock.h
-hba.o: /usr/include/x86_64-linux-gnu/bits/setjmp.h
-hba.o: /usr/include/x86_64-linux-gnu/c++/9/bits/atomic_word.h
-hba.o: /usr/include/c++/9/bits/locale_classes.h /usr/include/c++/9/string
-hba.o: /usr/include/c++/9/bits/ostream_insert.h
-hba.o: /usr/include/c++/9/bits/cxxabi_forced.h
-hba.o: /usr/include/c++/9/bits/basic_string.h
-hba.o: /usr/include/c++/9/bits/basic_string.tcc
-hba.o: /usr/include/c++/9/bits/locale_classes.tcc
-hba.o: /usr/include/c++/9/stdexcept /usr/include/c++/9/streambuf
-hba.o: /usr/include/c++/9/bits/streambuf.tcc
-hba.o: /usr/include/c++/9/bits/basic_ios.h
-hba.o: /usr/include/c++/9/bits/locale_facets.h /usr/include/c++/9/cwctype
-hba.o: /usr/include/wctype.h
-hba.o: /usr/include/x86_64-linux-gnu/bits/wctype-wchar.h
-hba.o: /usr/include/x86_64-linux-gnu/c++/9/bits/ctype_base.h
-hba.o: /usr/include/c++/9/bits/streambuf_iterator.h
-hba.o: /usr/include/x86_64-linux-gnu/c++/9/bits/ctype_inline.h
-hba.o: /usr/include/c++/9/bits/locale_facets.tcc
-hba.o: /usr/include/c++/9/bits/basic_ios.tcc
-hba.o: /usr/include/c++/9/bits/ostream.tcc /usr/include/c++/9/istream
-hba.o: /usr/include/c++/9/bits/istream.tcc /usr/include/c++/9/cassert
-hba.o: /usr/include/assert.h event.h /usr/include/c++/9/algorithm
-hba.o: /usr/include/c++/9/utility /usr/include/c++/9/bits/stl_relops.h
-hba.o: /usr/include/c++/9/bits/stl_algo.h /usr/include/c++/9/cstdlib
-hba.o: /usr/include/stdlib.h /usr/include/c++/9/bits/std_abs.h
-hba.o: /usr/include/stdlib.h /usr/include/c++/9/bits/algorithmfwd.h
-hba.o: /usr/include/c++/9/bits/stl_heap.h
-hba.o: /usr/include/c++/9/bits/stl_tempbuf.h /usr/include/c++/9/vector
-hba.o: /usr/include/c++/9/bits/stl_vector.h
-hba.o: /usr/include/c++/9/bits/stl_bvector.h
-hba.o: /usr/include/c++/9/bits/vector.tcc metrics.h
-hba.o: /usr/include/c++/9/cinttypes
+controller.o: /usr/include/c++/9/bits/istream.tcc task.h
+controller.o: /usr/include/c++/9/deque /usr/include/c++/9/bits/stl_deque.h
+controller.o: /usr/include/c++/9/bits/deque.tcc raid.h /usr/include/c++/9/map
+controller.o: /usr/include/c++/9/bits/stl_map.h
+controller.o: /usr/include/c++/9/bits/stl_multimap.h server.h metrics.h
+controller.o: /usr/include/c++/9/cinttypes port.h
+port.o: port.h /usr/include/c++/9/set /usr/include/c++/9/bits/stl_tree.h
+port.o: /usr/include/c++/9/bits/stl_algobase.h
+port.o: /usr/include/x86_64-linux-gnu/c++/9/bits/c++config.h
+port.o: /usr/include/x86_64-linux-gnu/c++/9/bits/os_defines.h
+port.o: /usr/include/features.h /usr/include/stdc-predef.h
+port.o: /usr/include/x86_64-linux-gnu/sys/cdefs.h
+port.o: /usr/include/x86_64-linux-gnu/bits/wordsize.h
+port.o: /usr/include/x86_64-linux-gnu/bits/long-double.h
+port.o: /usr/include/x86_64-linux-gnu/gnu/stubs.h
+port.o: /usr/include/x86_64-linux-gnu/c++/9/bits/cpu_defines.h
+port.o: /usr/include/c++/9/bits/functexcept.h
+port.o: /usr/include/c++/9/bits/exception_defines.h
+port.o: /usr/include/c++/9/bits/cpp_type_traits.h
+port.o: /usr/include/c++/9/ext/type_traits.h
+port.o: /usr/include/c++/9/ext/numeric_traits.h
+port.o: /usr/include/c++/9/bits/stl_pair.h /usr/include/c++/9/bits/move.h
+port.o: /usr/include/c++/9/bits/concept_check.h
+port.o: /usr/include/c++/9/bits/stl_iterator_base_types.h
+port.o: /usr/include/c++/9/bits/stl_iterator_base_funcs.h
+port.o: /usr/include/c++/9/debug/assertions.h
+port.o: /usr/include/c++/9/bits/stl_iterator.h
+port.o: /usr/include/c++/9/bits/ptr_traits.h /usr/include/c++/9/debug/debug.h
+port.o: /usr/include/c++/9/bits/predefined_ops.h
+port.o: /usr/include/c++/9/bits/allocator.h
+port.o: /usr/include/x86_64-linux-gnu/c++/9/bits/c++allocator.h
+port.o: /usr/include/c++/9/ext/new_allocator.h /usr/include/c++/9/new
+port.o: /usr/include/c++/9/exception /usr/include/c++/9/bits/exception.h
+port.o: /usr/include/c++/9/bits/memoryfwd.h
+port.o: /usr/include/c++/9/bits/stl_function.h
+port.o: /usr/include/c++/9/backward/binders.h
+port.o: /usr/include/c++/9/ext/alloc_traits.h
+port.o: /usr/include/c++/9/bits/stl_set.h
+port.o: /usr/include/c++/9/bits/stl_multiset.h
+port.o: /usr/include/c++/9/bits/range_access.h
+port.o: /usr/include/c++/9/bits/erase_if.h server.h
+port.o: /usr/include/c++/9/cstdint /usr/include/c++/9/bits/c++0x_warning.h
+port.o: /usr/include/c++/9/random /usr/include/c++/9/map
+port.o: /usr/include/c++/9/bits/stl_map.h
+port.o: /usr/include/c++/9/bits/stl_multimap.h task.h
+port.o: /usr/include/c++/9/deque /usr/include/c++/9/bits/stl_construct.h
+port.o: /usr/include/c++/9/bits/stl_uninitialized.h
+port.o: /usr/include/c++/9/bits/stl_deque.h /usr/include/c++/9/bits/deque.tcc
+port.o: /usr/include/c++/9/iostream /usr/include/c++/9/ostream
+port.o: /usr/include/c++/9/ios /usr/include/c++/9/iosfwd
+port.o: /usr/include/c++/9/bits/stringfwd.h
+port.o: /usr/include/c++/9/bits/postypes.h /usr/include/c++/9/cwchar
+port.o: /usr/include/wchar.h
+port.o: /usr/include/x86_64-linux-gnu/bits/libc-header-start.h
+port.o: /usr/include/x86_64-linux-gnu/bits/floatn.h
+port.o: /usr/include/x86_64-linux-gnu/bits/floatn-common.h
+port.o: /usr/lib/gcc/x86_64-linux-gnu/9/include/stddef.h
+port.o: /usr/lib/gcc/x86_64-linux-gnu/9/include/stdarg.h
+port.o: /usr/include/x86_64-linux-gnu/bits/wchar.h
+port.o: /usr/include/x86_64-linux-gnu/bits/types/wint_t.h
+port.o: /usr/include/x86_64-linux-gnu/bits/types/mbstate_t.h
+port.o: /usr/include/x86_64-linux-gnu/bits/types/__mbstate_t.h
+port.o: /usr/include/x86_64-linux-gnu/bits/types/__FILE.h
+port.o: /usr/include/x86_64-linux-gnu/bits/types/FILE.h
+port.o: /usr/include/x86_64-linux-gnu/bits/types/locale_t.h
+port.o: /usr/include/x86_64-linux-gnu/bits/types/__locale_t.h
+port.o: /usr/include/c++/9/bits/char_traits.h
+port.o: /usr/include/c++/9/bits/localefwd.h
+port.o: /usr/include/x86_64-linux-gnu/c++/9/bits/c++locale.h
+port.o: /usr/include/c++/9/clocale /usr/include/locale.h
+port.o: /usr/include/x86_64-linux-gnu/bits/locale.h /usr/include/c++/9/cctype
+port.o: /usr/include/ctype.h /usr/include/x86_64-linux-gnu/bits/types.h
+port.o: /usr/include/x86_64-linux-gnu/bits/timesize.h
+port.o: /usr/include/x86_64-linux-gnu/bits/typesizes.h
+port.o: /usr/include/x86_64-linux-gnu/bits/time64.h
+port.o: /usr/include/x86_64-linux-gnu/bits/endian.h
+port.o: /usr/include/x86_64-linux-gnu/bits/endianness.h
+port.o: /usr/include/c++/9/bits/ios_base.h /usr/include/c++/9/ext/atomicity.h
+port.o: /usr/include/x86_64-linux-gnu/c++/9/bits/gthr.h
+port.o: /usr/include/x86_64-linux-gnu/c++/9/bits/gthr-default.h
+port.o: /usr/include/pthread.h /usr/include/sched.h
+port.o: /usr/include/x86_64-linux-gnu/bits/types/time_t.h
+port.o: /usr/include/x86_64-linux-gnu/bits/types/struct_timespec.h
+port.o: /usr/include/x86_64-linux-gnu/bits/sched.h
+port.o: /usr/include/x86_64-linux-gnu/bits/types/struct_sched_param.h
+port.o: /usr/include/x86_64-linux-gnu/bits/cpu-set.h /usr/include/time.h
+port.o: /usr/include/x86_64-linux-gnu/bits/time.h
+port.o: /usr/include/x86_64-linux-gnu/bits/types/clock_t.h
+port.o: /usr/include/x86_64-linux-gnu/bits/types/struct_tm.h
+port.o: /usr/include/x86_64-linux-gnu/bits/types/clockid_t.h
+port.o: /usr/include/x86_64-linux-gnu/bits/types/timer_t.h
+port.o: /usr/include/x86_64-linux-gnu/bits/types/struct_itimerspec.h
+port.o: /usr/include/x86_64-linux-gnu/bits/pthreadtypes.h
+port.o: /usr/include/x86_64-linux-gnu/bits/thread-shared-types.h
+port.o: /usr/include/x86_64-linux-gnu/bits/pthreadtypes-arch.h
+port.o: /usr/include/x86_64-linux-gnu/bits/struct_mutex.h
+port.o: /usr/include/x86_64-linux-gnu/bits/struct_rwlock.h
+port.o: /usr/include/x86_64-linux-gnu/bits/setjmp.h
+port.o: /usr/include/x86_64-linux-gnu/c++/9/bits/atomic_word.h
+port.o: /usr/include/c++/9/bits/locale_classes.h /usr/include/c++/9/string
+port.o: /usr/include/c++/9/bits/ostream_insert.h
+port.o: /usr/include/c++/9/bits/cxxabi_forced.h
+port.o: /usr/include/c++/9/bits/basic_string.h
+port.o: /usr/include/c++/9/bits/basic_string.tcc
+port.o: /usr/include/c++/9/bits/locale_classes.tcc
+port.o: /usr/include/c++/9/stdexcept /usr/include/c++/9/streambuf
+port.o: /usr/include/c++/9/bits/streambuf.tcc
+port.o: /usr/include/c++/9/bits/basic_ios.h
+port.o: /usr/include/c++/9/bits/locale_facets.h /usr/include/c++/9/cwctype
+port.o: /usr/include/wctype.h
+port.o: /usr/include/x86_64-linux-gnu/bits/wctype-wchar.h
+port.o: /usr/include/x86_64-linux-gnu/c++/9/bits/ctype_base.h
+port.o: /usr/include/c++/9/bits/streambuf_iterator.h
+port.o: /usr/include/x86_64-linux-gnu/c++/9/bits/ctype_inline.h
+port.o: /usr/include/c++/9/bits/locale_facets.tcc
+port.o: /usr/include/c++/9/bits/basic_ios.tcc
+port.o: /usr/include/c++/9/bits/ostream.tcc /usr/include/c++/9/istream
+port.o: /usr/include/c++/9/bits/istream.tcc /usr/include/c++/9/cassert
+port.o: /usr/include/assert.h event.h /usr/include/c++/9/algorithm
+port.o: /usr/include/c++/9/utility /usr/include/c++/9/bits/stl_relops.h
+port.o: /usr/include/c++/9/bits/stl_algo.h /usr/include/c++/9/cstdlib
+port.o: /usr/include/stdlib.h /usr/include/c++/9/bits/std_abs.h
+port.o: /usr/include/stdlib.h /usr/include/c++/9/bits/algorithmfwd.h
+port.o: /usr/include/c++/9/bits/stl_heap.h
+port.o: /usr/include/c++/9/bits/stl_tempbuf.h /usr/include/c++/9/vector
+port.o: /usr/include/c++/9/bits/stl_vector.h
+port.o: /usr/include/c++/9/bits/stl_bvector.h
+port.o: /usr/include/c++/9/bits/vector.tcc metrics.h
+port.o: /usr/include/c++/9/cinttypes
 server.o: /usr/include/c++/9/chrono /usr/include/c++/9/bits/c++0x_warning.h
 server.o: /usr/include/c++/9/iostream
 server.o: /usr/include/x86_64-linux-gnu/c++/9/bits/c++config.h
@@ -953,9 +1038,9 @@ raid.o: /usr/include/c++/9/bits/stl_uninitialized.h
 raid.o: /usr/include/c++/9/bits/stl_deque.h /usr/include/c++/9/bits/deque.tcc
 raid.o: /usr/include/c++/9/cassert /usr/include/assert.h
 raid.o: /usr/include/c++/9/set /usr/include/c++/9/bits/stl_set.h
-raid.o: /usr/include/c++/9/bits/stl_multiset.h server.h
-raid.o: /usr/include/c++/9/random event.h /usr/include/c++/9/algorithm
-raid.o: /usr/include/c++/9/utility /usr/include/c++/9/bits/stl_relops.h
+raid.o: /usr/include/c++/9/bits/stl_multiset.h event.h
+raid.o: /usr/include/c++/9/algorithm /usr/include/c++/9/utility
+raid.o: /usr/include/c++/9/bits/stl_relops.h
 raid.o: /usr/include/c++/9/bits/stl_algo.h /usr/include/c++/9/cstdlib
 raid.o: /usr/include/stdlib.h /usr/include/c++/9/bits/std_abs.h
 raid.o: /usr/include/stdlib.h /usr/include/c++/9/bits/algorithmfwd.h
@@ -963,7 +1048,120 @@ raid.o: /usr/include/c++/9/bits/stl_heap.h
 raid.o: /usr/include/c++/9/bits/stl_tempbuf.h /usr/include/c++/9/vector
 raid.o: /usr/include/c++/9/bits/stl_vector.h
 raid.o: /usr/include/c++/9/bits/stl_bvector.h
-raid.o: /usr/include/c++/9/bits/vector.tcc metrics.h
-raid.o: /usr/include/c++/9/cinttypes
+raid.o: /usr/include/c++/9/bits/vector.tcc server.h /usr/include/c++/9/random
+raid.o: metrics.h /usr/include/c++/9/cinttypes
 metrics.o: metrics.h /usr/include/c++/9/cinttypes
-metrics.o: /usr/include/c++/9/bits/c++0x_warning.h
+metrics.o: /usr/include/c++/9/bits/c++0x_warning.h task.h
+metrics.o: /usr/include/c++/9/cstdint /usr/include/c++/9/deque
+metrics.o: /usr/include/c++/9/bits/stl_algobase.h
+metrics.o: /usr/include/x86_64-linux-gnu/c++/9/bits/c++config.h
+metrics.o: /usr/include/x86_64-linux-gnu/c++/9/bits/os_defines.h
+metrics.o: /usr/include/features.h /usr/include/stdc-predef.h
+metrics.o: /usr/include/x86_64-linux-gnu/sys/cdefs.h
+metrics.o: /usr/include/x86_64-linux-gnu/bits/wordsize.h
+metrics.o: /usr/include/x86_64-linux-gnu/bits/long-double.h
+metrics.o: /usr/include/x86_64-linux-gnu/gnu/stubs.h
+metrics.o: /usr/include/x86_64-linux-gnu/c++/9/bits/cpu_defines.h
+metrics.o: /usr/include/c++/9/bits/functexcept.h
+metrics.o: /usr/include/c++/9/bits/exception_defines.h
+metrics.o: /usr/include/c++/9/bits/cpp_type_traits.h
+metrics.o: /usr/include/c++/9/ext/type_traits.h
+metrics.o: /usr/include/c++/9/ext/numeric_traits.h
+metrics.o: /usr/include/c++/9/bits/stl_pair.h /usr/include/c++/9/bits/move.h
+metrics.o: /usr/include/c++/9/bits/concept_check.h
+metrics.o: /usr/include/c++/9/bits/stl_iterator_base_types.h
+metrics.o: /usr/include/c++/9/bits/stl_iterator_base_funcs.h
+metrics.o: /usr/include/c++/9/debug/assertions.h
+metrics.o: /usr/include/c++/9/bits/stl_iterator.h
+metrics.o: /usr/include/c++/9/bits/ptr_traits.h
+metrics.o: /usr/include/c++/9/debug/debug.h
+metrics.o: /usr/include/c++/9/bits/predefined_ops.h
+metrics.o: /usr/include/c++/9/bits/allocator.h
+metrics.o: /usr/include/x86_64-linux-gnu/c++/9/bits/c++allocator.h
+metrics.o: /usr/include/c++/9/ext/new_allocator.h /usr/include/c++/9/new
+metrics.o: /usr/include/c++/9/exception /usr/include/c++/9/bits/exception.h
+metrics.o: /usr/include/c++/9/bits/memoryfwd.h
+metrics.o: /usr/include/c++/9/bits/stl_construct.h
+metrics.o: /usr/include/c++/9/ext/alloc_traits.h
+metrics.o: /usr/include/c++/9/bits/stl_uninitialized.h
+metrics.o: /usr/include/c++/9/bits/stl_deque.h
+metrics.o: /usr/include/c++/9/bits/range_access.h
+metrics.o: /usr/include/c++/9/bits/deque.tcc /usr/include/c++/9/iostream
+metrics.o: /usr/include/c++/9/ostream /usr/include/c++/9/ios
+metrics.o: /usr/include/c++/9/iosfwd /usr/include/c++/9/bits/stringfwd.h
+metrics.o: /usr/include/c++/9/bits/postypes.h /usr/include/c++/9/cwchar
+metrics.o: /usr/include/wchar.h
+metrics.o: /usr/include/x86_64-linux-gnu/bits/libc-header-start.h
+metrics.o: /usr/include/x86_64-linux-gnu/bits/floatn.h
+metrics.o: /usr/include/x86_64-linux-gnu/bits/floatn-common.h
+metrics.o: /usr/lib/gcc/x86_64-linux-gnu/9/include/stddef.h
+metrics.o: /usr/lib/gcc/x86_64-linux-gnu/9/include/stdarg.h
+metrics.o: /usr/include/x86_64-linux-gnu/bits/wchar.h
+metrics.o: /usr/include/x86_64-linux-gnu/bits/types/wint_t.h
+metrics.o: /usr/include/x86_64-linux-gnu/bits/types/mbstate_t.h
+metrics.o: /usr/include/x86_64-linux-gnu/bits/types/__mbstate_t.h
+metrics.o: /usr/include/x86_64-linux-gnu/bits/types/__FILE.h
+metrics.o: /usr/include/x86_64-linux-gnu/bits/types/FILE.h
+metrics.o: /usr/include/x86_64-linux-gnu/bits/types/locale_t.h
+metrics.o: /usr/include/x86_64-linux-gnu/bits/types/__locale_t.h
+metrics.o: /usr/include/c++/9/bits/char_traits.h
+metrics.o: /usr/include/c++/9/bits/localefwd.h
+metrics.o: /usr/include/x86_64-linux-gnu/c++/9/bits/c++locale.h
+metrics.o: /usr/include/c++/9/clocale /usr/include/locale.h
+metrics.o: /usr/include/x86_64-linux-gnu/bits/locale.h
+metrics.o: /usr/include/c++/9/cctype /usr/include/ctype.h
+metrics.o: /usr/include/x86_64-linux-gnu/bits/types.h
+metrics.o: /usr/include/x86_64-linux-gnu/bits/timesize.h
+metrics.o: /usr/include/x86_64-linux-gnu/bits/typesizes.h
+metrics.o: /usr/include/x86_64-linux-gnu/bits/time64.h
+metrics.o: /usr/include/x86_64-linux-gnu/bits/endian.h
+metrics.o: /usr/include/x86_64-linux-gnu/bits/endianness.h
+metrics.o: /usr/include/c++/9/bits/ios_base.h
+metrics.o: /usr/include/c++/9/ext/atomicity.h
+metrics.o: /usr/include/x86_64-linux-gnu/c++/9/bits/gthr.h
+metrics.o: /usr/include/x86_64-linux-gnu/c++/9/bits/gthr-default.h
+metrics.o: /usr/include/pthread.h /usr/include/sched.h
+metrics.o: /usr/include/x86_64-linux-gnu/bits/types/time_t.h
+metrics.o: /usr/include/x86_64-linux-gnu/bits/types/struct_timespec.h
+metrics.o: /usr/include/x86_64-linux-gnu/bits/sched.h
+metrics.o: /usr/include/x86_64-linux-gnu/bits/types/struct_sched_param.h
+metrics.o: /usr/include/x86_64-linux-gnu/bits/cpu-set.h /usr/include/time.h
+metrics.o: /usr/include/x86_64-linux-gnu/bits/time.h
+metrics.o: /usr/include/x86_64-linux-gnu/bits/types/clock_t.h
+metrics.o: /usr/include/x86_64-linux-gnu/bits/types/struct_tm.h
+metrics.o: /usr/include/x86_64-linux-gnu/bits/types/clockid_t.h
+metrics.o: /usr/include/x86_64-linux-gnu/bits/types/timer_t.h
+metrics.o: /usr/include/x86_64-linux-gnu/bits/types/struct_itimerspec.h
+metrics.o: /usr/include/x86_64-linux-gnu/bits/pthreadtypes.h
+metrics.o: /usr/include/x86_64-linux-gnu/bits/thread-shared-types.h
+metrics.o: /usr/include/x86_64-linux-gnu/bits/pthreadtypes-arch.h
+metrics.o: /usr/include/x86_64-linux-gnu/bits/struct_mutex.h
+metrics.o: /usr/include/x86_64-linux-gnu/bits/struct_rwlock.h
+metrics.o: /usr/include/x86_64-linux-gnu/bits/setjmp.h
+metrics.o: /usr/include/x86_64-linux-gnu/c++/9/bits/atomic_word.h
+metrics.o: /usr/include/c++/9/bits/locale_classes.h /usr/include/c++/9/string
+metrics.o: /usr/include/c++/9/bits/ostream_insert.h
+metrics.o: /usr/include/c++/9/bits/cxxabi_forced.h
+metrics.o: /usr/include/c++/9/bits/stl_function.h
+metrics.o: /usr/include/c++/9/backward/binders.h
+metrics.o: /usr/include/c++/9/bits/basic_string.h
+metrics.o: /usr/include/c++/9/bits/basic_string.tcc
+metrics.o: /usr/include/c++/9/bits/locale_classes.tcc
+metrics.o: /usr/include/c++/9/stdexcept /usr/include/c++/9/streambuf
+metrics.o: /usr/include/c++/9/bits/streambuf.tcc
+metrics.o: /usr/include/c++/9/bits/basic_ios.h
+metrics.o: /usr/include/c++/9/bits/locale_facets.h /usr/include/c++/9/cwctype
+metrics.o: /usr/include/wctype.h
+metrics.o: /usr/include/x86_64-linux-gnu/bits/wctype-wchar.h
+metrics.o: /usr/include/x86_64-linux-gnu/c++/9/bits/ctype_base.h
+metrics.o: /usr/include/c++/9/bits/streambuf_iterator.h
+metrics.o: /usr/include/x86_64-linux-gnu/c++/9/bits/ctype_inline.h
+metrics.o: /usr/include/c++/9/bits/locale_facets.tcc
+metrics.o: /usr/include/c++/9/bits/basic_ios.tcc
+metrics.o: /usr/include/c++/9/bits/ostream.tcc /usr/include/c++/9/istream
+metrics.o: /usr/include/c++/9/bits/istream.tcc /usr/include/c++/9/cassert
+metrics.o: /usr/include/assert.h /usr/include/c++/9/set
+metrics.o: /usr/include/c++/9/bits/stl_tree.h
+metrics.o: /usr/include/c++/9/bits/stl_set.h
+metrics.o: /usr/include/c++/9/bits/stl_multiset.h
+metrics.o: /usr/include/c++/9/bits/erase_if.h
