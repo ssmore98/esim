@@ -1,0 +1,247 @@
+# This is a PCIe Gen3 system
+# Each lane can transfer 1 GB/s
+# two lanes of each drive are connected to local PCIe, and two lanes go remote
+drives:
+        # drives in the first controller
+        name: ssd.1.
+        type: ssd_pm1733a
+        instances: 48
+drives:
+        # drives in the second controller
+        name: ssd.2.
+        type: ssd_pm1733a
+        instances: 48
+raid:
+        # first 23 drive RAID
+        name: raid.1
+        type: raid_dp
+        stripe_width: 65536
+        drives: 
+          - ssd\.1\.[1-5]
+raid:
+        # second 23 drive RAID
+        name: raid.2
+        type: raid_dp
+        stripe_width: 65536
+        drives: 
+          - ssd\.1\.([7-9]|1[01])
+raid:
+        # third 23 drive RAID
+        name: raid.3
+        type: raid_dp
+        stripe_width: 65536
+        drives: 
+          - ssd\.2\.[1-5]
+raid:
+        # fourth 23 drive RAID
+        name: raid.4
+        type: raid_dp
+        stripe_width: 65536
+        drives: 
+          - ssd\.2\.([7-9]|1[01])
+# PCIe switches in the first controller that connect the drives to the PCIe bus
+ioms:
+        name: PCIe.1.
+        max_iops: 1000000
+        # each switch gets 2 lanes from 12 drives = 24 incoming lanes
+        # each switch has 8 outgoing lanes
+        mbps: 8192
+        instances: 4
+# PCIe switches in the second controller that connect the drives to the PCIe bus
+ioms:
+        name: PCIe.2.
+        max_iops: 1000000
+        # each switch gets 2 lanes from 12 drives = 24 incoming lanes
+        # each switch has 8 outgoing lanes
+        mbps: 8192
+        instances: 4
+# remote PCIe data connection
+ioms:
+        name: remote.PCIe.
+        max_iops: 1000000
+        # the remote connections connect to a x16 card
+        mbps: 16384
+        instances: 2
+port:
+        name: port.1.1
+        iom: PCIe.1.1
+        max_iops: 1000000
+        mbps: 24576
+port:
+        name: port.1.2
+        iom: PCIe.1.2
+        max_iops: 1000000
+        mbps: 24576
+port:
+        name: port.1.3
+        iom: PCIe.1.3
+        max_iops: 1000000
+        mbps: 24576
+port:
+        name: port.1.4
+        iom: PCIe.1.4
+        max_iops: 1000000
+        mbps: 24576
+port:
+        name: port.2.1
+        iom: PCIe.2.1
+        max_iops: 1000000
+        mbps: 24576
+port:
+        name: port.2.2
+        iom: PCIe.2.2
+        max_iops: 1000000
+        mbps: 24576
+port:
+        name: port.2.3
+        iom: PCIe.2.3
+        max_iops: 1000000
+        mbps: 24576
+port:
+        name: port.2.4
+        iom: PCIe.2.4
+        max_iops: 1000000
+        mbps: 24576
+port:
+        name: remote.PCIe.1
+        iom: remote.PCIe.2
+        max_iops: 1000000
+        mbps: 1000
+port:
+        name: remote.PCIe.2
+        iom: remote.PCIe.1
+        max_iops: 1000000
+        mbps: 1000
+hba:
+        name: PCIe.1.1
+        ports:
+                - port\.1\.\d+
+hba:
+        name: PCIe.2.1
+        ports:
+                - port\.2\.\d+
+hba:
+        name: remote.PCIe.1
+        ports:
+                - remote.PCIe.1
+hba:
+        name: remote.PCIe.2
+        ports:
+                - remote.PCIe.2
+shelf:
+        name: builtin.1.1
+        ioms:
+          - PCIe\.1\.1
+          - remote\.PCIe\.1
+        slots: 12
+        drives: 
+          - ssd\.1\.(\d|1[012])
+shelf:
+        name: builtin.1.2
+        ioms:
+          - PCIe\.1\.2
+          - remote\.PCIe\.1
+        slots: 12
+        drives: 
+          - ssd\.1\.(1[3-9]|2[0-4])
+shelf:
+        name: builtin.1.3
+        ioms:
+          - PCIe\.1\.3
+          - remote\.PCIe\.1
+        slots: 12
+        drives: 
+          - ssd\.1\.(2[5-9]|3[0-6])
+shelf:
+        name: builtin.1.4
+        ioms:
+          - PCIe\.1\.4
+          - remote\.PCIe\.1
+        slots: 12
+        drives: 
+          - ssd\.1\.(3[7-9]|4[0-8])
+shelf:
+        name: builtin.2.1
+        ioms:
+          - PCIe\.2\.1
+          - remote\.PCIe\.2
+        slots: 12
+        drives: 
+          - ssd\.2\.(\d|1[012])
+shelf:
+        name: builtin.2.2
+        ioms:
+          - PCIe\.2\.2
+          - remote\.PCIe\.2
+        slots: 12
+        drives: 
+          - ssd\.2\.(1[3-9]|2[0-4])
+shelf:
+        name: builtin.2.3
+        ioms:
+          - PCIe\.2\.3
+          - remote\.PCIe\.2
+        slots: 12
+        drives: 
+          - ssd\.2\.(2[5-9]|3[0-6])
+shelf:
+        name: builtin.2.4
+        ioms:
+          - PCIe\.2\.4
+          - remote\.PCIe\.2
+        slots: 12
+        drives: 
+          - ssd\.2\.(3[7-9]|4[0-8])
+generator:
+        name: gen.1
+        raid: raid.1
+        # queue_depth: 2
+        iops: 1000
+        size: 65536
+        percent_read: 0
+        percent_random: 0
+generator:
+        name: gen.2
+        raid: raid.2
+        # queue_depth: 2
+        iops: 1000
+        size: 65536
+        percent_read: 0
+        percent_random: 0
+generator:
+        name: gen.3
+        raid: raid.3
+        # queue_depth: 2
+        iops: 1000
+        size: 65536
+        percent_read: 0
+        percent_random: 0
+generator:
+        name: gen.4
+        raid: raid.4
+        # queue_depth: 2
+        iops: 1000
+        size: 65536
+        percent_read: 0
+        percent_random: 0
+controller:
+        name: AFFA800.1
+        generators:
+                - gen\.1
+                - gen\.3
+        hbas:
+          - PCIe\.1\.\d+
+          - remote.PCIe.1
+controller:
+        name: AFFA800.2
+        generators:
+                - gen\.2
+                - gen\.4
+        hbas:
+          - PCIe\.2\.\d+
+          - remote.PCIe.2
+filer:
+        name: Apollo
+        controllers: 
+          - AFFA800\.[12]
+simulation_time: 1000000
