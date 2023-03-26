@@ -9,11 +9,12 @@ uint64_t Port::GetServiceTime(Task * const task) {
 }
 
 Port::Port(const std::string & name, const uint64_t & p_service_time, const double & p_mbps): Server(name),
-       	service_time(p_service_time), mbps(p_mbps) {
+       	iom(NULL), service_time(p_service_time), mbps(p_mbps) {
 }
 
-Port & Port::operator=(IOModule * const iom) {
-	ioms.insert(iom);
+Port & Port::operator=(IOModule * const p_iom) {
+	assert(!iom);
+	iom = p_iom;
 	return *this;
 }
 
@@ -38,13 +39,11 @@ ServerEvents Port::Start(const uint64_t & t) {
 	if (0 < taskq.size()) {
 	       	retval.insert(new ServerEvent(t + GetServiceTime(taskq.front()), EvTyPortFinProc, this, taskq.front()));
 	}
-	for (IOModules::iterator iom = ioms.begin(); iom != ioms.end(); iom++) {
-		if (finished_task->SERVERS().end() != finished_task->SERVERS().find(*iom)) {
-		       	pending_tasks.insert(finished_task);
-			ServerEvents sretval = (*iom)->Submit(finished_task, t);
-			retval.insert(sretval.begin(), sretval.end());
-			return retval;
-		}
+	if (finished_task->SERVERS().end() != finished_task->SERVERS().find(iom)) {
+	       	pending_tasks.insert(finished_task);
+		ServerEvents sretval = iom->Submit(finished_task, t);
+		retval.insert(sretval.begin(), sretval.end());
+		return retval;
 	}
 	assert(0);
 	return ServerEvents();
@@ -67,6 +66,21 @@ void Port::print(std::ostream & o, const uint64_t & current_time) {
 	Server::print(o, current_time);
 }
 
+void Ports::print(std::ostream & o, const uint64_t & current_time) {
+	o << "Port\t\tIOPS\tMBPS\tIOS\tBYTES\tRT\tST\tQLEN" << std::endl;
+	o << std::string(80, '=') << std::endl;
+	for (Ports::const_iterator i = begin(); i != end(); i++) {
+	       	o << (*i)->name;
+		o << '\t';
+		(*i)->METRICS().print(o, current_time);
+		o << std::endl;
+	}
+	o << std::string(80, '-') << std::endl;
+}
+
+void Port::PrintConfig(std::ostream & o, const std::string & prefix) const {
+	o << prefix << "Port " << name << " -> IO Module " << iom->name << std::endl;
+}
 HBA::HBA(const std::string & p_name): name(p_name) {
 }
 
@@ -77,5 +91,12 @@ HBA & HBA::operator=(Port * const port) {
 
 void HBA::print(std::ostream & o, const uint64_t & current_time) {
 	o << "HBA " << name << std::endl;
+}
+
+void HBA::PrintConfig(std::ostream & o, const std::string & prefix) const {
+	o << prefix << "HBA " << name << std::endl;
+	for (Ports::const_iterator i = Ports::begin(); i != Ports::end(); i++) {
+		(*i)->PrintConfig(o, prefix + "\t");
+	}
 }
 #endif // PORT_CPP

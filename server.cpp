@@ -57,10 +57,23 @@ SSD_PM1733a::~SSD_PM1733a() {
 }
 
 void SSD_PM1733a::print(std::ostream & o, const uint64_t & current_time) {
-	o << "SSD_PM1733a " << name << " (" << my_index << ")" << std::endl;
-	if (current_time) o << "\tIOPS " << (metrics.N_TASKS() * 1000 * 1000) / current_time << std::endl;
-	if (current_time) o << "\tMBPS " << (metrics.SZ_SUM() * 1000 * 1000) / (current_time * 1024 * 1024) << std::endl;
+	// o << "SSD_PM1733a " << name << " (" << my_index << ")" << std::endl;
+	if (current_time) o << (metrics.N_TASKS() * 1000 * 1000) / current_time;
+	if (current_time) o << '\t' << (metrics.SZ_SUM() * 1000 * 1000) / (current_time * 1024 * 1024);
 	this->Server::print(o, current_time);
+}
+
+void Drives::print(std::ostream & o, const uint64_t & current_time) const {
+	o << "Drive\t\tIOPS\tMBPS\tIOS\tBYTES\tRT      \tST      \tQLEN" << std::endl;
+	o << std::string(80, '=') << std::endl;
+	for (Drives::const_iterator i = begin(); i != end(); i++) {
+		o << (*i)->name;
+		o << '\t';
+		(*i)->METRICS().print(o, current_time);
+		// (*i)->print(o, current_time);
+		o << std::endl;
+	}
+	o << std::string(80, '-') << std::endl;
 }
 
 Drive::Drive(const std::string & name): Server(name), shelf(NULL) {
@@ -75,7 +88,7 @@ Shelf * const Drive::SHELF() const {
 	return shelf;
 }
 
-Shelf::Shelf(const std::string & p_name): name(p_name) {
+Shelf::Shelf(const std::string & p_name, const uint16_t & p_slots): name(p_name), slots(p_slots) {
 }
 
 Shelf::~Shelf() {
@@ -100,7 +113,7 @@ void Shelf::print(std::ostream & o, const uint64_t & current_time) {
 	       	/ (current_time * 1024 * 1024) << std::endl;
 	o << "\tTotal I/Os " << std::accumulate<IOModules::iterator, uint64_t>(ioms.begin(), ioms.end(), 0, sumtasks) << std::endl;
 	o << "\tTotal Bytes " << std::accumulate<IOModules::iterator, uint64_t>(ioms.begin(), ioms.end(), 0, sumszs) << std::endl;
-	ioms.print(o, current_time);
+	ioms.cumulative_print(o, current_time);
 }
 
 Shelf & Shelf::operator=(IOModule * const iom) {
@@ -109,6 +122,7 @@ Shelf & Shelf::operator=(IOModule * const iom) {
 }
 
 Shelf & Shelf::operator=(Drive * const drive) {
+	assert(drives.size() < slots);
 	drives.insert(drive);
 	return *this;
 }
@@ -140,7 +154,7 @@ static uint64_t sumtasktime(uint64_t acc, IOModule * const x) { return acc + x->
 static uint64_t sumsvcsum(uint64_t acc, IOModule * const x) { return acc + x->METRICS().SVC_SUM(); }
 static uint64_t sumqdsum(uint64_t acc, IOModule * const x) { return acc + x->METRICS().QD_SUM(); }
 
-void IOModules::print(std::ostream & o, const uint64_t & current_time) const {
+void IOModules::cumulative_print(std::ostream & o, const uint64_t & current_time) const {
 	if (std::accumulate<IOModules::iterator, uint64_t>(begin(), end(), 0, sumtasks)) {
 	       	o << "\tavLatency " << double(std::accumulate<IOModules::iterator, uint64_t>(begin(), end(), 0, sumtasktime)) /
 		       	double(std::accumulate<IOModules::iterator, uint64_t>(begin(), end(), 0, sumtasks) * 1000 * 1000) << std::endl;
@@ -149,6 +163,18 @@ void IOModules::print(std::ostream & o, const uint64_t & current_time) const {
 	       	o << "\tavQueueDepth " << double(std::accumulate<IOModules::iterator, uint64_t>(begin(), end(), 0, sumqdsum)) /
 		       	double(std::accumulate<IOModules::iterator, uint64_t>(begin(), end(), 0, sumtasks) * 1000 * 1000) << std::endl;
 	}
+}
+
+void IOModules::print(std::ostream & o, const uint64_t & current_time) const {
+	o << "IOM\t\tIOPS\tMBPS\tIOS\tBYTES\tRT\tST\tQLEN" << std::endl;
+	o << std::string(80, '=') << std::endl;
+	for (IOModules::const_iterator i = begin(); i != end(); i++) {
+	       	o << (*i)->name;
+		o << '\t';
+		(*i)->METRICS().print(o, current_time);
+		o << std::endl;
+	}
+	o << std::string(80, '-') << std::endl;
 }
 
 uint64_t IOModule::GetServiceTime(Task * const task) {
@@ -234,4 +260,21 @@ std::pair<Task *, Event *> SSD_PM1733a::Finish(const uint64_t & t, Task * const 
 	return std::pair<Task *, Event *>(finished_task, next_event);
 }
 
+void Drive::PrintConfig(std::ostream & o, const std::string & prefix) const {
+	o << prefix << "Drive " << name << std::endl;
+}
+
+void IOModule::PrintConfig(std::ostream & o, const std::string & prefix) const {
+	o << prefix << "IO Module " << name << std::endl;
+}
+
+void Shelf::PrintConfig(std::ostream & o, const std::string & prefix) const {
+	o << prefix << "Shelf " << name << std::endl;
+	for (IOModules::const_iterator i = ioms.begin(); i != ioms.end(); i++) {
+		(*i)->PrintConfig(o, prefix + "\t");
+	}
+	for (Drives::const_iterator i = drives.begin(); i != drives.end(); i++) {
+		(*i)->PrintConfig(o, prefix + "\t\t");
+	}
+}
 #endif // SERVER_CPP

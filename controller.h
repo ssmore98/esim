@@ -25,10 +25,15 @@ class Controller {
 	       	Task * const EndTask(const uint64_t & t, Task * const task);
 		void print(std::ostream & o, const uint64_t & current_time) const;
 		const HBAs & HBAS() const { return hbas; }
+		const Generators & GENERATORS() const { return generators; }
 		const Metrics & METRICS() const { return metrics; }
+	       	void PrintConfig(std::ostream & o, const std::string & prefix) const;
 };
 
-typedef std::set<Controller *> Controllers;
+class Controllers: public std::set<Controller *> {
+	public:
+	       	void print(std::ostream & o, const uint64_t & current_time) const;
+};
 
 class Filer: public Controllers {
 	public:
@@ -36,8 +41,12 @@ class Filer: public Controllers {
 		Filer(const std::string & p_name);
 		Filer & operator=(Controller * const controller);
 		void print(std::ostream & o, const uint64_t & current_time) const;
+	       	void PrintConfig(std::ostream & o, const std::string & prefix) const;
 };
 
-typedef std::set<Filer *> Filers;
+class Filers: public std::set<Filer *> {
+	public:
+	       	void print(std::ostream & o, const uint64_t & current_time) const;
+};
 
 #endif // CONTROLLER_H

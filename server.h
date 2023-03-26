@@ -47,9 +47,13 @@ class Drive: public Server {
 	       	virtual ServerEvents Submit(Task * const task, const uint64_t & t) = 0;
 		Shelf * const SHELF() const;
 	       	virtual ServerEvents Start(const uint64_t & t) = 0;
+	       	void PrintConfig(std::ostream & o, const std::string & prefix) const;
 };
 
-typedef std::set<Drive *> Drives;
+class Drives: public std::set<Drive *> {
+	public:
+	       	void print(std::ostream & o, const uint64_t & current_time) const;
+};
 
 class IOModule: public Server {
 	protected:
@@ -67,10 +71,12 @@ class IOModule: public Server {
 	       	virtual ServerEvents Submit(Task * const task, const uint64_t & t);
 	       	virtual std::pair<Task *, Event *> Finish(const uint64_t & t, Task * const task);
 	       	virtual ServerEvents Start(const uint64_t & t);
+	       	void PrintConfig(std::ostream & o, const std::string & prefix) const;
 };
 
 class IOModules: public std::set<IOModule *> {
 	public:
+	       	void cumulative_print(std::ostream & o, const uint64_t & current_time) const;
 	       	void print(std::ostream & o, const uint64_t & current_time) const;
 };
 
@@ -80,12 +86,14 @@ class Shelf {
 		IOModules ioms;
 	public:
 		const std::string name;
-		Shelf(const std::string & name);
+		const uint16_t slots;
+		Shelf(const std::string & name, const uint16_t & p_slots);
 	       	virtual ~Shelf();
 		Shelf & operator=(Drive * const drive);
 		Shelf & operator=(IOModule * const iom);
 	       	void print(std::ostream & o, const uint64_t & current_time);
 		const Drives & DRIVES() const { return drives; }
+	       	void PrintConfig(std::ostream & o, const std::string & prefix) const;
 };
 
 typedef std::set<Shelf *> Shelves;

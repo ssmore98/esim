@@ -325,6 +325,7 @@ Shelf * const ParseShelf(yaml_parser_t & parser, const Drives & drives, const IO
 	uint16_t in_mapping = 0;
 	std::vector<std::string> drive_names;
 	std::vector<std::string> iom_names;
+	uint16_t slots = 48;
 	while (true) {
 		if (!yaml_parser_parse(&parser, &e)) {
 		       	assert(0);
@@ -361,7 +362,7 @@ Shelf * const ParseShelf(yaml_parser_t & parser, const Drives & drives, const IO
 							}
 						}
 					}
-				       	Shelf * const retval = new Shelf(name);
+				       	Shelf * const retval = new Shelf(name, slots);
 					for (Drives::const_iterator i = shelf_drives.begin();
 							i != shelf_drives.end(); i++) {
 						*retval = *i;
@@ -387,6 +388,8 @@ Shelf * const ParseShelf(yaml_parser_t & parser, const Drives & drives, const IO
 						expect_key = true;
 						if (std::regex_match(key, std::regex("name", std::regex::icase))) {
 						       	name = value;
+						} else if (std::regex_match(key, std::regex("slots", std::regex::icase))) {
+						       	slots = stoul(value);
 					       	} else {
 						       	assert(0);
 						}
@@ -917,6 +920,7 @@ HBA * const ParseHBA(yaml_parser_t & parser, Ports & ports) {
 						if (std::regex_match(key, std::regex("name", std::regex::icase))) {
 						       	name = value;
 					       	} else {
+							std::cout << key << ' ' << value << std::endl;
 						       	assert(0);
 						}
 					}
@@ -1134,6 +1138,12 @@ Generator * const ParseGenerator(yaml_parser_t & parser, RAIDs & raids) {
 
 int main(int argc, char **argv) {
 
+	std::string config_filename("config.yaml");
+
+	if (1 < argc) {
+		config_filename = argv[1];
+	}
+
 	uint64_t t = 0;
 	Events events;
 	RAIDs raids;
@@ -1147,7 +1157,7 @@ int main(int argc, char **argv) {
 	HBAs hbas;
 	uint64_t simulation_time = 0;
 
-	FILE * const config_fp = fopen("config.yaml", "r");
+	FILE * const config_fp = fopen(config_filename.c_str(), "r");
 	assert(config_fp);
 	yaml_parser_t parser;
 	yaml_parser_initialize(&parser);
@@ -1217,6 +1227,15 @@ int main(int argc, char **argv) {
 	}
 	yaml_parser_delete(&parser);
 	fclose(config_fp);
+
+	/*
+	for (Filers::const_iterator filer = filers.begin(); filer != filers.end(); filer++) {
+		(*filer)->PrintConfig(std::cout, "");
+	}
+	for (Shelves::const_iterator shelf = shelves.begin(); shelf != shelves.end(); shelf++) {
+		(*shelf)->PrintConfig(std::cout, "");
+	}
+	*/
 
        	if (1 > simulation_time) {
 	       	std::cerr << "Simulation time should be greater than zero." << std::endl;
@@ -1357,6 +1376,12 @@ int main(int argc, char **argv) {
 		}
 		delete e;
 	}
+       	drives.print(std::cout, t);
+       	ioms.print(std::cout, t);
+       	ports.print(std::cout, t);
+       	controllers.print(std::cout, t);
+       	filers.print(std::cout, t);
+	exit(0);
 	for (Generators::const_iterator generator = generators.begin(); generator != generators.end(); generator++) {
 	       	delete *generator;
 	}
@@ -1368,28 +1393,28 @@ int main(int argc, char **argv) {
 		(*shelf)->print(std::cout, t);
 	       	delete *shelf;
 	}
-	for (Drives::const_iterator drive = drives.begin(); drive != drives.end(); drive++) {
-		(*drive)->print(std::cout, t);
-	       	delete *drive;
-	}
-	for (IOModules::const_iterator iom = ioms.begin(); iom != ioms.end(); iom++) {
-		(*iom)->print(std::cout, t);
-	       	delete *iom;
-	}
 	for (HBAs::const_iterator hba = hbas.begin(); hba != hbas.end(); hba++) {
 		(*hba)->print(std::cout, t);
 	       	delete *hba;
 	}
+	for (Drives::const_iterator drive = drives.begin(); drive != drives.end(); drive++) {
+		(*drive)->print(std::cout, t);
+	       	// delete *drive;
+	}
+	for (IOModules::const_iterator iom = ioms.begin(); iom != ioms.end(); iom++) {
+		// (*iom)->print(std::cout, t);
+	       	delete *iom;
+	}
 	for (Ports::const_iterator port = ports.begin(); port != ports.end(); port++) {
-		(*port)->print(std::cout, t);
+		// (*port)->print(std::cout, t);
 	       	delete *port;
 	}
 	for (Controllers::const_iterator cntlr = controllers.begin(); cntlr != controllers.end(); cntlr++) {
-		(*cntlr)->print(std::cout, t);
+		// (*cntlr)->print(std::cout, t);
 	       	delete *cntlr;
 	}
 	for (Filers::const_iterator filer = filers.begin(); filer != filers.end(); filer++) {
-		(*filer)->print(std::cout, t);
+		// (*filer)->print(std::cout, t);
 	       	delete *filer;
 	}
 	return 0;

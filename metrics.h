@@ -22,6 +22,8 @@ class Metrics {
 	       	void StartTask(const uint16_t & qd, const uint64_t & svc, const size_t & iosize);
 		void EndTask(const uint64_t & xt);
 		friend std::ostream & operator<<(std::ostream & o, const Metrics & m);
+	       	void print(std::ostream & o) const;
+	       	void print(std::ostream & o, const uint64_t & current_time) const;
 };
 
 #endif // METRICS_H
