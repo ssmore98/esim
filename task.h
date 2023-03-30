@@ -7,6 +7,8 @@
 #include <cassert>
 #include <set>
 
+#include "metrics.h"
+
 #define MAX_TASKQ (64 * 1024)
 
 class Server;
@@ -18,12 +20,12 @@ class Task {
 	protected:
 		std::set<Server *> servers;
 	public:
-		const uint64_t t;
-		const size_t size;
+		const Time t;
+		const Bytes size;
 		Generator * const generator;
 		const bool is_read;
 		const bool is_random;
-		Task(const uint64_t & p_t, const size_t & p_size, const bool & pis_read,
+		Task(const Time & p_t, const Bytes & p_size, const bool & pis_read,
 			       	const bool & pis_random, Generator * const p_generator);
 		Task & operator=(Server * const p_server);
 		const std::set<Server *> & SERVERS() const { return servers; }

@@ -14,28 +14,28 @@ drives:
 raid:
         # first 23 drive RAID
         name: raid.1
-        type: raid_dp
+        type: raid_0
         stripe_width: 65536
         drives: 
           - ssd\.1\.[1-5]
 raid:
         # second 23 drive RAID
         name: raid.2
-        type: raid_dp
+        type: raid_0
         stripe_width: 65536
         drives: 
           - ssd\.1\.([7-9]|1[01])
 raid:
         # third 23 drive RAID
         name: raid.3
-        type: raid_dp
+        type: raid_0
         stripe_width: 65536
         drives: 
           - ssd\.2\.[1-5]
 raid:
         # fourth 23 drive RAID
         name: raid.4
-        type: raid_dp
+        type: raid_0
         stripe_width: 65536
         drives: 
           - ssd\.2\.([7-9]|1[01])
@@ -195,34 +195,34 @@ shelf:
 generator:
         name: gen.1
         raid: raid.1
-        # queue_depth: 2
-        iops: 1000
+        queue_depth: 1
+        # iops: 1000
         size: 65536
-        percent_read: 0
+        percent_read: 100
         percent_random: 0
 generator:
         name: gen.2
         raid: raid.2
-        # queue_depth: 2
-        iops: 1000
+        queue_depth: 1
+        # iops: 1000
         size: 65536
-        percent_read: 0
+        percent_read: 100
         percent_random: 0
 generator:
         name: gen.3
         raid: raid.3
-        # queue_depth: 2
-        iops: 1000
+        queue_depth: 1
+        # iops: 1000
         size: 65536
-        percent_read: 0
+        percent_read: 100
         percent_random: 0
 generator:
         name: gen.4
         raid: raid.4
-        # queue_depth: 2
-        iops: 1000
+        queue_depth: 1
+        # iops: 1000
         size: 65536
-        percent_read: 0
+        percent_read: 100
         percent_random: 0
 controller:
         name: AFFA800.1
@@ -244,4 +244,4 @@ filer:
         name: Apollo
         controllers: 
           - AFFA800\.[12]
-simulation_time: 1000000
+simulation_time: 2

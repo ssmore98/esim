@@ -4,6 +4,7 @@
 #include <chrono>
 #include <iostream>
 #include <memory>
+#include <iomanip>
 
 #include "server.h"
 #include "generator.h"
@@ -18,7 +19,7 @@ std::ostream & operator<<(std::ostream & o, const Servers & servers) {
 	return o;
 }
 
-void Server::print(std::ostream & o, const uint64_t & current_time) {
+void Server::print(std::ostream & o, const Time & current_time) {
 	o << metrics;
 }
 
@@ -29,75 +30,16 @@ Server::Server(const std::string & p_name): my_index(index), name(p_name) {
 Server::~Server() {
 }
 
-SSD_PM1733a::SSD_PM1733a(const std::string & name): Drive(name),
-       	read_service_time_distr(double(1)/(double)0.031), write_service_time_distr(double(1)/double(8)) {
-}
-
-uint64_t SSD_PM1733a::GetServiceTime(Task * const task) {
-	assert(task);
-	if (task->is_read) {
-	       	const uint64_t retval = llround(0.000000031 + ((task->size * 1000 * 1000) / double(3205.0 * 1024 * 1024)));
-		if (!retval) return 1;
-	       	return retval;
-	} else {
-	       	const uint64_t retval = llround(write_service_time_distr(generator) + ((task->size * 1000 * 1000) / double(4688.0 * 1024 * 1024)));
-		if (!retval) return 1;
-	       	return retval;
-	}
-	assert(0);
-	return 0;
-}
-
-size_t SSD_PM1733a::StripeSize() const {
-	assert(0);
-	return 0;
-}
-
-SSD_PM1733a::~SSD_PM1733a() {
-}
-
-void SSD_PM1733a::print(std::ostream & o, const uint64_t & current_time) {
-	// o << "SSD_PM1733a " << name << " (" << my_index << ")" << std::endl;
-	if (current_time) o << (metrics.N_TASKS() * 1000 * 1000) / current_time;
-	if (current_time) o << '\t' << (metrics.SZ_SUM() * 1000 * 1000) / (current_time * 1024 * 1024);
-	this->Server::print(o, current_time);
-}
-
-void Drives::print(std::ostream & o, const uint64_t & current_time) const {
-	o << "Drive\t\tIOPS\tMBPS\tIOS\tBYTES\tRT      \tST      \tQLEN" << std::endl;
-	o << std::string(80, '=') << std::endl;
-	for (Drives::const_iterator i = begin(); i != end(); i++) {
-		o << (*i)->name;
-		o << '\t';
-		(*i)->METRICS().print(o, current_time);
-		// (*i)->print(o, current_time);
-		o << std::endl;
-	}
-	o << std::string(80, '-') << std::endl;
-}
-
-Drive::Drive(const std::string & name): Server(name), shelf(NULL) {
-}
-
-Drive & Drive::operator=(Shelf * const p_shelf) {
-	shelf = p_shelf;
-	return *this;
-}
-
-Shelf * const Drive::SHELF() const {
-	return shelf;
-}
-
 Shelf::Shelf(const std::string & p_name, const uint16_t & p_slots): name(p_name), slots(p_slots) {
 }
 
 Shelf::~Shelf() {
 }
 
-static uint64_t sumtasks(uint64_t acc, IOModule * const x) { return acc + x->METRICS().N_TASKS(); }
-static uint64_t sumszs(uint64_t acc, IOModule * const x) { return acc + x->METRICS().SZ_SUM(); }
+static IOS sumtasks(IOS acc, IOModule * const x) { return acc + x->METRICS().N_TASKS(); }
+static Bytes sumszs(Bytes acc, IOModule * const x) { return acc + x->METRICS().SZ_SUM(); }
 
-void Shelf::print(std::ostream & o, const uint64_t & current_time) {
+void Shelf::print(std::ostream & o, const Time & current_time) {
 	o << "Shelf " << name << std::endl;
 	/*
 	for (IOModules::const_iterator i = ioms.begin(); i != ioms.end(); i++) {
@@ -107,12 +49,12 @@ void Shelf::print(std::ostream & o, const uint64_t & current_time) {
 	       	o << "\t Drive " << (*i)->name << std::endl;
 	}
 	*/
-	if (current_time) o << "\tIOPS " << (std::accumulate<IOModules::iterator, uint64_t>(ioms.begin(), ioms.end(), 0, sumtasks)
-		       	* 1000 * 1000) / current_time << std::endl;
-	if (current_time) o << "\tMBPS " << (std::accumulate<IOModules::iterator, uint64_t>(ioms.begin(), ioms.end(), 0, sumszs) * 1000 * 1000)
-	       	/ (current_time * 1024 * 1024) << std::endl;
+	if (current_time) o << "\tIOPS " << std::accumulate<IOModules::iterator, IOS>(ioms.begin(), ioms.end(), 0, sumtasks)
+		       	 / current_time << std::endl;
+	if (current_time) o << "\tMBPS " << std::accumulate<IOModules::iterator, Bytes>(ioms.begin(), ioms.end(), 0, sumszs)
+	       	/ current_time << std::endl;
 	o << "\tTotal I/Os " << std::accumulate<IOModules::iterator, uint64_t>(ioms.begin(), ioms.end(), 0, sumtasks) << std::endl;
-	o << "\tTotal Bytes " << std::accumulate<IOModules::iterator, uint64_t>(ioms.begin(), ioms.end(), 0, sumszs) << std::endl;
+	o << "\tTotal Bytes " << std::accumulate<IOModules::iterator, Bytes>(ioms.begin(), ioms.end(), 0, sumszs) << std::endl;
 	ioms.cumulative_print(o, current_time);
 }
 
@@ -127,21 +69,21 @@ Shelf & Shelf::operator=(Drive * const drive) {
 	return *this;
 }
 
-IOModule::IOModule(const std::string & name, const uint64_t & p_service_time, const double & p_mbps):
+IOModule::IOModule(const std::string & name, const Time & p_service_time, const DataRate & p_mbps):
        	Server(name), shelf(NULL), service_time(p_service_time), mbps(p_mbps) {
 }
 
 IOModule::~IOModule() {
 }
 
-void IOModule::print(std::ostream & o, const uint64_t & current_time) {
+void IOModule::print(std::ostream & o, const Time & current_time) {
 	o << "IOM " << name << std::endl;
 	/*
 	o << "\tTotal I/Os " << metrics.N_TASKS() << std::endl;
 	o << "\tTotal Bytes " << metrics.SZ_SUM() << std::endl;
 	*/
-	if (current_time) o << "\tIOPS " << (metrics.N_TASKS() * 1000 * 1000) / current_time << std::endl;
-	if (current_time) o << "\tMBPS " << (metrics.SZ_SUM() * 1000 * 1000) / (current_time * 1024 * 1024) << std::endl;
+	if (current_time) o << "\tIOPS " << metrics.N_TASKS() / current_time << std::endl;
+	if (current_time) o << "\tMBPS " << metrics.SZ_SUM() / current_time << std::endl;
 	this->Server::print(o, current_time);
 }
 
@@ -150,26 +92,26 @@ IOModule & IOModule::operator=(Shelf * const p_shelf) {
 	return *this;
 }
 
-static uint64_t sumtasktime(uint64_t acc, IOModule * const x) { return acc + x->METRICS().TASK_TIME(); }
-static uint64_t sumsvcsum(uint64_t acc, IOModule * const x) { return acc + x->METRICS().SVC_SUM(); }
-static uint64_t sumqdsum(uint64_t acc, IOModule * const x) { return acc + x->METRICS().QD_SUM(); }
+static Time sumtasktime(Time acc, IOModule * const x) { return acc + x->METRICS().TASK_TIME(); }
+static Time sumsvcsum(Time acc, IOModule * const x) { return acc + x->METRICS().SVC_SUM(); }
+static QueueDepth sumqdsum(QueueDepth acc, IOModule * const x) { return acc + x->METRICS().QD_SUM(); }
 
-void IOModules::cumulative_print(std::ostream & o, const uint64_t & current_time) const {
+void IOModules::cumulative_print(std::ostream & o, const Time & current_time) const {
 	if (std::accumulate<IOModules::iterator, uint64_t>(begin(), end(), 0, sumtasks)) {
 	       	o << "\tavLatency " << double(std::accumulate<IOModules::iterator, uint64_t>(begin(), end(), 0, sumtasktime)) /
 		       	double(std::accumulate<IOModules::iterator, uint64_t>(begin(), end(), 0, sumtasks) * 1000 * 1000) << std::endl;
 	       	o << "\tavServiceTime " << double(std::accumulate<IOModules::iterator, uint64_t>(begin(), end(), 0, sumsvcsum)) /
 		       	double(std::accumulate<IOModules::iterator, uint64_t>(begin(), end(), 0, sumtasks) * 1000 * 1000) << std::endl;
-	       	o << "\tavQueueDepth " << double(std::accumulate<IOModules::iterator, uint64_t>(begin(), end(), 0, sumqdsum)) /
-		       	double(std::accumulate<IOModules::iterator, uint64_t>(begin(), end(), 0, sumtasks) * 1000 * 1000) << std::endl;
+	       	o << "\tavQueueDepth " << std::accumulate<IOModules::iterator, QueueDepth>(begin(), end(), 0, sumqdsum) /
+		       	std::accumulate<IOModules::iterator, IOS>(begin(), end(), 0, sumtasks) << std::endl;
 	}
 }
 
-void IOModules::print(std::ostream & o, const uint64_t & current_time) const {
-	o << "IOM\t\tIOPS\tMBPS\tIOS\tBYTES\tRT\tST\tQLEN" << std::endl;
+void IOModules::print(std::ostream & o, const Time & current_time) const {
+	o << "IOM\t\tIOPS\tTPUT\t\tIOS\t\tBYTES\tRT\tST\tQLEN" << std::endl;
 	o << std::string(80, '=') << std::endl;
 	for (IOModules::const_iterator i = begin(); i != end(); i++) {
-	       	o << (*i)->name;
+	       	o << std::setw(10) << std::left  << (*i)->name;
 		o << '\t';
 		(*i)->METRICS().print(o, current_time);
 		o << std::endl;
@@ -177,24 +119,34 @@ void IOModules::print(std::ostream & o, const uint64_t & current_time) const {
 	o << std::string(80, '-') << std::endl;
 }
 
-uint64_t IOModule::GetServiceTime(Task * const task) {
-	const uint64_t xtime = double(task->size * 1000 * 1000) / (1024 * 1024 * mbps);
+Time IOModule::GetServiceTime(Task * const task) {
+	const Time xtime = task->size / mbps;
+	// std::cout << __FILE__ << ':' << __LINE__ << ' '  << (xtime > service_time ? xtime : service_time) << std::endl;
 	return (xtime > service_time ? xtime : service_time);
 }
 
-ServerEvents IOModule::Submit(Task * const task, const uint64_t & t) {
+ServerEvents IOModule::Submit(Task * const task, const Time & t) {
 	assert(task->SERVERS().end() != task->SERVERS().find(this));
 	taskq.push_back(task);
        	metrics.StartTask(taskq.size(), GetServiceTime(task), task->size);
 	if (1 == taskq.size()) {
 		ServerEvents retval;
-	       	retval.insert(new ServerEvent(t + GetServiceTime(task), EvTyIOMFinProc, this, task));
+	       	// std::cout << __FILE__ << ':' << __LINE__ << ' ' << t << '+' << GetServiceTime(task) <<
+		       	// '=' << t + GetServiceTime(task) <<
+		       	// std::endl;
+	       	// std::cout << __FILE__ << ':' << __LINE__ << '(' << t + GetServiceTime(task) << ')' << std::endl;
+		const Time nt(t + GetServiceTime(task));
+	       	// std::cout << __FILE__ << ':' << __LINE__ << ' ' << nt << std::endl;
+		ServerEvent * const se = new ServerEvent(nt, EvTyIOMFinProc, this, task);
+	       	// std::cout << __FILE__ << ':' << __LINE__ << ' ' << se->t << std::endl;
+	       	retval.insert(se);
+	       	// std::cout << __FILE__ << ':' << __LINE__ << ' ' << retval << std::endl;
 		return retval;
 	}
 	return ServerEvents();
 }
 
-ServerEvents IOModule::Start(const uint64_t & t) {
+ServerEvents IOModule::Start(const Time & t) {
 	assert(0 < taskq.size());
 	Task * const finished_task = taskq.front();
 	taskq.pop_front();
@@ -216,52 +168,13 @@ ServerEvents IOModule::Start(const uint64_t & t) {
 	return ServerEvents();
 }
 
-std::pair<Task *, Event *> IOModule::Finish(const uint64_t & t, Task * const task) {
+std::pair<Task *, Event *> IOModule::Finish(const Time & t, Task * const task) {
 	assert(task);
 	Tasks::iterator itask = pending_tasks.find(task);
 	assert(pending_tasks.end() != itask);
        	pending_tasks.erase(itask);
        	metrics.EndTask(t - task->t);
        	return std::pair<Task *, Event *>(task, NULL);
-}
-
-ServerEvents SSD_PM1733a::Submit(Task * const task, const uint64_t & t) {
-	assert(task->SERVERS().end() != task->SERVERS().find(this));
-	assert(MAX_TASKQ > taskq.size());
-	taskq.push_back(task);
-	if (1 == taskq.size()) {
-	       	const uint64_t xtime = GetServiceTime(task);
-		metrics.StartTask(1, xtime, task->size);
-	       	ServerEvents retval;
-	       	retval.insert(new ServerEvent(t + xtime, EvTyServDiskEnd, this, task));
-		return retval;
-	}
-	return ServerEvents();
-}
-
-ServerEvents SSD_PM1733a::Start(const uint64_t & t) {
-	assert(0);
-	return ServerEvents();
-}
-
-std::pair<Task *, Event *> SSD_PM1733a::Finish(const uint64_t & t, Task * const task) {
-	assert(!task);
-	assert(0 < taskq.size());
-	Task * const finished_task = taskq.front();
-	taskq.pop_front();
-       	metrics.EndTask(t - finished_task->t);
-	Event * next_event = NULL;
-	if (0 < taskq.size()) {
-	       	Task * const next_task = taskq.front();
-	       	const uint64_t xtime = GetServiceTime(next_task);
-		metrics.StartTask(taskq.size(), xtime, next_task->size);
-	       	next_event = new ServerEvent(t + xtime, EvTyServDiskEnd, this, next_task);
-	}
-	return std::pair<Task *, Event *>(finished_task, next_event);
-}
-
-void Drive::PrintConfig(std::ostream & o, const std::string & prefix) const {
-	o << prefix << "Drive " << name << std::endl;
 }
 
 void IOModule::PrintConfig(std::ostream & o, const std::string & prefix) const {

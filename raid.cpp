@@ -13,20 +13,20 @@ RAID::RAID(const std::string & p_name): name(p_name) {
 RAID::~RAID() {
 }
 
-RAID_0::RAID_0(const std::string & name, Drives & p_drives, const size_t & p_stripe_width, const std::string & p_raid_level):
+RAID_0::RAID_0(const std::string & name, Drives & p_drives, const Bytes & p_stripe_width, const std::string & p_raid_level):
        	RAID(name), select_server_distr(0, p_drives.size() - 1),
        	drives(p_drives), stripe_width(p_stripe_width), raid_level(p_raid_level) {
        	// std::cout << stripe_width << std::endl;
 }
 
-void RAID_0::print(std::ostream & o, const uint64_t & current_time) const {
+void RAID_0::print(std::ostream & o, const Time & current_time) const {
 	o << "RAID-" << raid_level << " " << name << std::endl;
-	if (current_time) o << "\tIOPS " << (metrics.N_TASKS() * 1000 * 1000) / current_time << std::endl;
-	if (current_time) o << "\tMBPS " << (metrics.SZ_SUM() * 1000 * 1000) / (current_time * 1024 * 1024) << std::endl;
+	if (current_time) o << "\tIOPS " << metrics.N_TASKS() / current_time << std::endl;
+	if (current_time) o << "\tMBPS " << metrics.SZ_SUM() / current_time << std::endl;
 	o << metrics;
 }
 
-size_t RAID_0::StripeSize() const {
+Bytes RAID_0::StripeSize() const {
 	// std::cout << stripe_width << " " << drives.size() << std::endl;
 	return stripe_width * drives.size();
 }
@@ -35,8 +35,9 @@ RAID_0::~RAID_0() {
 }
 
 TaskList RAID_0::Execute(Task * const task) {
+	// std::cout << task << std::endl;
 	tasks.insert(task);
-       	metrics.StartTask(tasks.size(), 0, task->size);
+       	metrics.StartTask(tasks.size(), Time(), task->size);
 	TaskList retval;
        	Drives::iterator data_drive = drives.begin();
        	std::advance(data_drive, select_server_distr(generator));
@@ -44,10 +45,11 @@ TaskList RAID_0::Execute(Task * const task) {
 	Tasks ntasks;
 	ntasks.insert(ntask);
 	retval.insert(TaskList::value_type(*data_drive, ntasks));
+	assert(retval.size());
 	return retval;
 }
 
-Tasks  RAID_0::Finish(const uint64_t & current_time, Task * const task) {
+Tasks  RAID_0::Finish(const Time & current_time, Task * const task) {
 	Tasks::iterator itask = tasks.find(task);
 	assert(tasks.end() != itask);
 	tasks.erase(itask);
@@ -61,17 +63,17 @@ RAID_1::RAID_1(const std::string & name, Drives & drives): RAID_0(name, drives, 
        	select_server_distr(0, drives.size() - 1) {
 }
 
-void RAID_1::print(std::ostream & o, const uint64_t & current_time) const {
+void RAID_1::print(std::ostream & o, const Time & current_time) const {
 	this->RAID_0::print(o, current_time);
 }
 
-size_t RAID_1::StripeSize() const {
+Bytes RAID_1::StripeSize() const {
 	return 0;
 }
 
 TaskList RAID_1::Execute(Task * const task) {
 	tasks.insert(task);
-       	metrics.StartTask(tasks.size(), 0, task->size);
+       	metrics.StartTask(tasks.size(), Time(), task->size);
 	TaskList retval;
 	if (task->is_read) {
 		Drives::iterator i_drive = drives.begin();
@@ -94,7 +96,7 @@ TaskList RAID_1::Execute(Task * const task) {
 	return retval;
 }
 
-Tasks  RAID_1::Finish(const uint64_t & current_time, Task * const task) {
+Tasks  RAID_1::Finish(const Time & current_time, Task * const task) {
 	Tasks::iterator itask = tasks.find(task);
 	assert(tasks.end() != itask);
 	tasks.erase(itask);
@@ -107,15 +109,15 @@ Tasks  RAID_1::Finish(const uint64_t & current_time, Task * const task) {
 RAID_1::~RAID_1() {
 }
 
-RAID_5::RAID_5(const std::string & name, Drives & drives, const size_t & stripe_width):
+RAID_5::RAID_5(const std::string & name, Drives & drives, const Bytes & stripe_width):
        	RAID_0(name, drives, stripe_width, "5") {
 }
 
-void RAID_5::print(std::ostream & o, const uint64_t & current_time) const {
+void RAID_5::print(std::ostream & o, const Time & current_time) const {
 	this->RAID_0::print(o, current_time);
 }
 
-size_t RAID_5::StripeSize() const {
+Bytes RAID_5::StripeSize() const {
 	return stripe_width * (drives.size() - 1);
 }
 
@@ -125,7 +127,7 @@ RAID_5::~RAID_5() {
 TaskList RAID_5::Execute(Task * const task) {
 	if (task->is_read) return RAID_0::Execute(task);
 	tasks.insert(task);
-       	metrics.StartTask(tasks.size(), 0, task->size);
+       	metrics.StartTask(tasks.size(), Time(), task->size);
 	TaskList retval;
        	Drives::iterator data_drive = drives.begin();
        	std::advance(data_drive, select_server_distr(generator));
@@ -150,7 +152,7 @@ TaskList RAID_5::Execute(Task * const task) {
 	return retval;
 }
 
-Tasks  RAID_5::Finish(const uint64_t & current_time, Task * const task) {
+Tasks  RAID_5::Finish(const Time & current_time, Task * const task) {
 	Tasks::iterator itask = tasks.find(task);
 	assert(tasks.end() != itask);
 	tasks.erase(itask);
@@ -160,27 +162,27 @@ Tasks  RAID_5::Finish(const uint64_t & current_time, Task * const task) {
 	return retval;
 }
 
-RAID_4::RAID_4(const std::string & name, Drives & data_drives, Drives & p_parity_drives, const size_t & stripe_width,
+RAID_4::RAID_4(const std::string & name, Drives & data_drives, Drives & p_parity_drives, const Bytes & stripe_width,
 		const std::string & raid_level): RAID_0(name, data_drives, stripe_width, raid_level),
        	select_parity_distr(0, p_parity_drives.size() - 1),
        	parity_drives(p_parity_drives) {
 }
 
-size_t RAID_4::StripeSize() const {
+Bytes RAID_4::StripeSize() const {
 	return RAID_0::StripeSize();
 }
 
 RAID_4::~RAID_4() {
 }
 
-void RAID_4::print(std::ostream & o, const uint64_t & current_time) {
+void RAID_4::print(std::ostream & o, const Time & current_time) {
 	this->RAID_0::print(o, current_time);
 }
 
 TaskList RAID_4::Execute(Task * const task) {
 	if (task->is_read) return RAID_0::Execute(task);
 	tasks.insert(task);
-       	metrics.StartTask(tasks.size(), 0, task->size);
+       	metrics.StartTask(tasks.size(), Time(), task->size);
 	TaskList retval;
        	Drives::iterator data_drive = drives.begin();
        	std::advance(data_drive, select_server_distr(generator));
@@ -202,7 +204,7 @@ TaskList RAID_4::Execute(Task * const task) {
 	return retval;
 }
 
-Tasks  RAID_4::Finish(const uint64_t & current_time, Task * const task) {
+Tasks  RAID_4::Finish(const Time & current_time, Task * const task) {
 	Tasks::iterator itask = tasks.find(task);
 	assert(tasks.end() != itask);
 	tasks.erase(itask);
@@ -213,21 +215,22 @@ Tasks  RAID_4::Finish(const uint64_t & current_time, Task * const task) {
 }
 
 RAID_DP::RAID_DP(const std::string & name, Drives & data_drives, Drives & parity_drives,
-	       	const size_t & stripe_width): RAID_4(name, data_drives, parity_drives, stripe_width, "DP") {
+	       	const Bytes & stripe_width): RAID_4(name, data_drives, parity_drives, stripe_width, "DP") {
 }
 
 RAID_DP::~RAID_DP() {
 }
 
-size_t RAID_DP::GetAccWriteSize() const {
-	size_t retval = 0;
+Bytes RAID_DP::GetAccWriteSize() const {
+	Bytes retval = 0;
 	for (auto & n : write_tasks) retval += n->size;
 	return retval;
 }
 
 TaskList RAID_DP::Execute(Task * const task) {
+	// std::cout << task << std::endl;
 	if (task->is_read) return RAID_0::Execute(task);
-       	metrics.StartTask(tasks.size(), 0, task->size);
+       	metrics.StartTask(tasks.size(), Time(), task->size);
 	// std::cout << StripeSize() << " " << GetAccWriteSize() << std::endl;
 	// std::cout << task << " " << write_tasks;
 	assert(write_tasks.end() == write_tasks.find(task));
@@ -256,7 +259,7 @@ TaskList RAID_DP::Execute(Task * const task) {
 	return TaskList();
 }
 
-Tasks RAID_DP::Finish(const uint64_t & current_time, Task * const task) {
+Tasks RAID_DP::Finish(const Time & current_time, Task * const task) {
 	if (task->is_read) {
 		return RAID_0::Finish(current_time, task);
 	}
@@ -277,7 +280,7 @@ Tasks RAID_DP::Finish(const uint64_t & current_time, Task * const task) {
 	return retval;
 }
 
-void RAID_DP::print(std::ostream & o, const uint64_t & current_time) {
+void RAID_DP::print(std::ostream & o, const Time & current_time) {
 	this->RAID_4::print(o, current_time);
 }
 

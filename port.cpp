@@ -1,14 +1,17 @@
 #ifndef PORT_CPP
 #define PORT_CPP
 
+#include <iomanip>
+
 #include "port.h"
 
-uint64_t Port::GetServiceTime(Task * const task) {
-	const uint64_t xtime = double(task->size * 1000 * 1000) / (1024 * 1024 * mbps);
+Time Port::GetServiceTime(Task * const task) {
+	Time xtime = task->size / mbps;
+	// std::cout << (xtime > service_time ? xtime : service_time) << std::endl;
 	return (xtime > service_time ? xtime : service_time);
 }
 
-Port::Port(const std::string & name, const uint64_t & p_service_time, const double & p_mbps): Server(name),
+Port::Port(const std::string & name, const Time & p_service_time, const double & p_mbps): Server(name),
        	iom(NULL), service_time(p_service_time), mbps(p_mbps) {
 }
 
@@ -18,20 +21,21 @@ Port & Port::operator=(IOModule * const p_iom) {
 	return *this;
 }
 
-ServerEvents Port::Submit(Task * const task, const uint64_t & t) {
+ServerEvents Port::Submit(Task * const task, const Time & t) {
 	assert(task->SERVERS().end() != task->SERVERS().find(this));
 	// std::cout << "IN " << task << std::endl;
 	taskq.push_back(task);
        	metrics.StartTask(taskq.size(), GetServiceTime(task), task->size);
 	if (1 == taskq.size()) {
 		ServerEvents retval;
+		// std::cout << t + GetServiceTime(task) << std::endl;
 	       	retval.insert(new ServerEvent(t + GetServiceTime(task), EvTyPortFinProc, this, task));
 		return retval;
 	}
 	return ServerEvents();
 }
 
-ServerEvents Port::Start(const uint64_t & t) {
+ServerEvents Port::Start(const Time & t) {
 	assert(0 < taskq.size());
 	Task * const finished_task = taskq.front();
 	taskq.pop_front();
@@ -42,6 +46,7 @@ ServerEvents Port::Start(const uint64_t & t) {
 	if (finished_task->SERVERS().end() != finished_task->SERVERS().find(iom)) {
 	       	pending_tasks.insert(finished_task);
 		ServerEvents sretval = iom->Submit(finished_task, t);
+	       	// std::cout << __FILE__ << ':' << __LINE__ << ' ' << sretval << std::endl;
 		retval.insert(sretval.begin(), sretval.end());
 		return retval;
 	}
@@ -49,7 +54,7 @@ ServerEvents Port::Start(const uint64_t & t) {
 	return ServerEvents();
 }
 
-std::pair<Task *, Event *> Port::Finish(const uint64_t & t, Task * const task) {
+std::pair<Task *, Event *> Port::Finish(const Time & t, Task * const task) {
 	assert(task);
 	// std::cout << "OUT " << task << std::endl;
 	Tasks::iterator itask = pending_tasks.find(task);
@@ -59,18 +64,18 @@ std::pair<Task *, Event *> Port::Finish(const uint64_t & t, Task * const task) {
        	return std::pair<Task *, Event *>(task, NULL);
 }
 
-void Port::print(std::ostream & o, const uint64_t & current_time) {
+void Port::print(std::ostream & o, const Time & current_time) {
 	o << "Port " << name << std::endl;
-	if (current_time) o << "\tIOPS " << (metrics.N_TASKS() * 1000 * 1000) / current_time << std::endl;
-	if (current_time) o << "\tMBPS " << (metrics.SZ_SUM() * 1000 * 1000) / (current_time * 1024 * 1024) << std::endl;
+	if (current_time) o << "\tIOPS " << metrics.N_TASKS() / current_time << std::endl;
+	if (current_time) o << "\tMBPS " << metrics.SZ_SUM() / current_time << std::endl;
 	Server::print(o, current_time);
 }
 
-void Ports::print(std::ostream & o, const uint64_t & current_time) {
-	o << "Port\t\tIOPS\tMBPS\tIOS\tBYTES\tRT\tST\tQLEN" << std::endl;
+void Ports::print(std::ostream & o, const Time & current_time) {
+	o << "Port\t\tIOPS\tTPUT\t\tIOS\t\tBYTES\tRT\tST\tQLEN" << std::endl;
 	o << std::string(80, '=') << std::endl;
 	for (Ports::const_iterator i = begin(); i != end(); i++) {
-	       	o << (*i)->name;
+	       	o << std::setw(10) << std::left << (*i)->name;
 		o << '\t';
 		(*i)->METRICS().print(o, current_time);
 		o << std::endl;
@@ -89,7 +94,7 @@ HBA & HBA::operator=(Port * const port) {
 	return *this;
 }
 
-void HBA::print(std::ostream & o, const uint64_t & current_time) {
+void HBA::print(std::ostream & o, const Time & current_time) {
 	o << "HBA " << name << std::endl;
 }
 

@@ -719,11 +719,13 @@ Port * const ParsePort(yaml_parser_t & parser, IOModules & ioms) {
 					IOModules shelf_ioms;
 					for (IOModules::const_iterator j = ioms.begin(); j != ioms.end(); j++) {
 					       	if (std::regex_match((*j)->name, std::regex(iom_name, std::regex::icase))) {
-						       	Port * const port = new Port(name, uint64_t(1000000 / double(max_iops)), mbps);
+							Time ia(uint64_t(1000000 / double(max_iops)));
+						       	Port * const port = new Port(name, ia, mbps);
 							*port = *j;
 							return port;
 					       	}
 				       	}
+					std::cerr << "Cannot find matching I/O module(s): " << iom_name << std::endl;
 					assert(0);
 				}
 				break;
@@ -788,8 +790,9 @@ void ParseIOModules(yaml_parser_t & parser, IOModules & ioms) {
 				// std::cout << in_mapping << std::endl;
 				if (!in_mapping) {
 					for (uint16_t i = 0; i < instances; i++) {
+						Time ia(uint64_t(1000000 / double(max_iops)));
 					       	ioms.insert(new IOModule(name + std::to_string(i + 1),
-								       	uint64_t(1000000 / double(max_iops)), mbps));
+								       	ia, mbps));
 					}
 					return;
 				}
@@ -852,7 +855,8 @@ IOModule * const ParseIOModule(yaml_parser_t & parser) {
 				in_mapping--;
 				// std::cout << in_mapping << std::endl;
 				if (!in_mapping) {
-					return new IOModule(name, uint64_t(1000000 / double(max_iops)), mbps);
+					Time ia(uint64_t(1000000 / double(max_iops)));
+					return new IOModule(name, ia, mbps);
 				}
 				break;
 			case YAML_SCALAR_EVENT:
@@ -1039,7 +1043,7 @@ Generator * const ParseGenerator(yaml_parser_t & parser, RAIDs & raids) {
 	bool expect_key = false;
 	unsigned int qdepth = 0;
 	bool b2b = false;
-	unsigned int ia_time = 0;
+	Time ia_time;
 	uint16_t in_mapping = 0;
 	uint16_t percent_read = 0;
 	uint16_t percent_random = 0;
@@ -1066,7 +1070,7 @@ Generator * const ParseGenerator(yaml_parser_t & parser, RAIDs & raids) {
 						       	exit(1);
 					       	}
 				       	} else {
-					       	if (1 > ia_time) {
+					       	if (!ia_time) {
 						       	std::cerr << "Inter-arrival time should be greater than zero." << std::endl;
 						       	exit(1);
 					       	}
@@ -1106,7 +1110,7 @@ Generator * const ParseGenerator(yaml_parser_t & parser, RAIDs & raids) {
 						       	qdepth = std::stoul(value);
 						} else if (std::regex_match(key, std::regex("ia_time", std::regex::icase))) {
 						       	b2b = false;
-						       	ia_time = std::stoul(value);
+						       	ia_time += std::stoul(value);
 						} else if (std::regex_match(key, std::regex("percent_read", std::regex::icase))) {
 						       	percent_read = std::stoul(value);
 						} else if (std::regex_match(key, std::regex("percent_random", std::regex::icase))) {
@@ -1119,7 +1123,7 @@ Generator * const ParseGenerator(yaml_parser_t & parser, RAIDs & raids) {
 						       	raid_name = value;
 						} else if (std::regex_match(key, std::regex("iops", std::regex::icase))) {
 						       	b2b = false;
-						       	ia_time = (unsigned int)(1000000.0 / std::stod(value));
+						       	ia_time += (uint64_t)(1000000.0 / std::stod(value));
 					       	} else {
 						       	assert(0);
 						}
@@ -1144,7 +1148,7 @@ int main(int argc, char **argv) {
 		config_filename = argv[1];
 	}
 
-	uint64_t t = 0;
+	Time t;
 	Events events;
 	RAIDs raids;
 	Drives drives;
@@ -1155,7 +1159,7 @@ int main(int argc, char **argv) {
 	Shelves shelves;
 	Filers filers;
 	HBAs hbas;
-	uint64_t simulation_time = 0;
+	Time simulation_time;
 
 	FILE * const config_fp = fopen(config_filename.c_str(), "r");
 	assert(config_fp);
@@ -1198,7 +1202,8 @@ int main(int argc, char **argv) {
 					       	hbas.insert(ParseHBA(parser, ports));
 				       	} else if (expect_value) {
 						if (!strcasecmp("simulation_time", key.c_str())) {
-						       	simulation_time = std::stoull((char *)e.data.scalar.value);
+						       	simulation_time =
+							       	uint64_t(std::stod((char *)e.data.scalar.value) * 1000 * 1000);
 						} else {
 							std::cout << e.data.scalar.value << std::endl;
 						       	assert(0);
@@ -1228,16 +1233,14 @@ int main(int argc, char **argv) {
 	yaml_parser_delete(&parser);
 	fclose(config_fp);
 
-	/*
 	for (Filers::const_iterator filer = filers.begin(); filer != filers.end(); filer++) {
 		(*filer)->PrintConfig(std::cout, "");
 	}
 	for (Shelves::const_iterator shelf = shelves.begin(); shelf != shelves.end(); shelf++) {
 		(*shelf)->PrintConfig(std::cout, "");
 	}
-	*/
 
-       	if (1 > simulation_time) {
+       	if (!simulation_time) {
 	       	std::cerr << "Simulation time should be greater than zero." << std::endl;
 	       	exit(1);
        	}
@@ -1245,8 +1248,11 @@ int main(int argc, char **argv) {
 	for (Controllers::iterator i = controllers.begin(); i != controllers.end(); i++) {
 		(*i)->Begin(events, t);
 	}
-
+       	// std::cout << __FILE__ << ':' << __LINE__ << ' ' << events << std::endl;
+        uint64_t i = 0;
 	while (t < simulation_time) {
+		i++;
+		if (i > 1000000) break;
 		if (0 == events.size()) {
 			std::cout << "Empty event heap.\n";
 			exit(0);
@@ -1256,7 +1262,7 @@ int main(int argc, char **argv) {
 		std::pop_heap(events.begin(), events.end(), cmp);
 	       	events.pop_back();
 		t = e->t;
-		// e->print(std::cout);
+		// e->print(std::cout); std::cout << std::endl;
 		// std::cout << " " << events << std::endl;
 		switch (e->type) {
 		       	case EvTyIOMFinProc:
@@ -1272,6 +1278,7 @@ int main(int argc, char **argv) {
 		       	case EvTyPortFinProc:
 				{
 				       	ServerEvents ses = e->GetServer()->Start(t);
+				       	// std::cout << __FILE__ << ':' << __LINE__ << ' ' << ses << std::endl;
 					for (ServerEvents::iterator i = ses.begin(); i != ses.end(); i++) {
 					       	events.push_back(*i);
 					       	std::push_heap(events.begin(), events.end(), cmp);

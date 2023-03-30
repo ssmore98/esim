@@ -6,7 +6,7 @@
 #include "generator.h"
 #include "controller.h"
 
-Event::Event(const uint64_t & p_t, const EventType & p_type): t(p_t), type(p_type) {
+Event::Event(const Time & p_t, const EventType & p_type): t(p_t), type(p_type) {
 }
 
 Event::~Event() {
@@ -17,7 +17,7 @@ void Events::push_back(Event * const e) {
        	std::vector<Event *>::push_back(e);
 }
 
-GeneratorEvent::GeneratorEvent(const uint64_t & t, const EventType & type, Generator * const p_generator): Event(t, type), generator(p_generator) {
+GeneratorEvent::GeneratorEvent(const Time & t, const EventType & type, Generator * const p_generator): Event(t, type), generator(p_generator) {
 }
 
 Generator * const GeneratorEvent::GetGenerator() const {
@@ -39,8 +39,9 @@ bool cmp(const Event * const e1, const Event * const e2)  {
 	return e1->t > e2->t;
 }
 
-ServerEvent::ServerEvent(const uint64_t & t, const EventType & type, Server * const p_server, Task * const p_task):
+ServerEvent::ServerEvent(const Time & t, const EventType & type, Server * const p_server, Task * const p_task):
        	Event(t, type), server(p_server), task(p_task) {
+	       	// std::cout << __FILE__ << ':' << __LINE__ << ' ' << t << std::endl;
 }
 
 Server * const ServerEvent::GetServer() const {
@@ -66,7 +67,16 @@ std::ostream & operator<<(std::ostream & o, const EventType & type) {
 			o << "Rate Generator Next Task";
 			break;
 		case EvTyServDiskEnd:
-			o << "Server Disk End";
+			o << "Disk End";
+			break;
+		case EvTyIOMEnd:
+			o << "IOM End";
+			break;
+		case EvTyPortEnd:
+			o << "Port End";
+			break;
+		case EvTyCtrlEnd:
+			o << "Controller End";
 			break;
 		case EvTyPortFinProc:
 			o << "Port Finish Processing";
@@ -86,7 +96,7 @@ void Event::print(std::ostream & o)  const{
 
 void ServerEvent::print(std::ostream & o) const {
 	Event::print(o);
-	o << "Server: " << server->name << ' ';
+	o << " Server: " << server->name << ' ' << task << ' ';
 }
 
 void GeneratorEvent::print(std::ostream & o) const {
@@ -109,7 +119,7 @@ std::ostream & operator<<(std::ostream & o, const Events & events) {
 	return o;
 }
 
-ControllerEvent::ControllerEvent(const uint64_t & t, const EventType & type, Controller * const p_controller, Task * const p_task):
+ControllerEvent::ControllerEvent(const Time & t, const EventType & type, Controller * const p_controller, Task * const p_task):
        	Event(t, type), controller(p_controller), task(p_task) {
 }
 
@@ -131,5 +141,14 @@ void ControllerEvent::print(std::ostream & o) const {
 	Event::print(o);
 	o << "Controller: " << controller->name << ' ';
 }
+
+std::ostream & operator<<(std::ostream & o, const ServerEvents & s) {
+	o << '(';
+	for (ServerEvents::const_iterator i = s.begin(); i != s.end(); i++) {
+		o << **i << ' ';
+	}
+	o << ')';
+	return o;
+};
 
 #endif // EVENT_CPP

@@ -20,10 +20,10 @@ class Controller {
 		Controller(const std::string & p_name);
 		Controller & operator=(Generator * const generator);
 		Controller & operator=(HBA * const hba);
-		void Begin(Events & events, const uint64_t & t);
-	       	void ScheduleTask(RAID * const raid, Task * const task, Events & events, const uint64_t & current_time);
-	       	Task * const EndTask(const uint64_t & t, Task * const task);
-		void print(std::ostream & o, const uint64_t & current_time) const;
+		void Begin(Events & events, const Time & t);
+	       	void ScheduleTask(RAID * const raid, Task * const task, Events & events, const Time & current_time);
+	       	Task * const EndTask(const Time & t, Task * const task);
+		void print(std::ostream & o, const Time & current_time) const;
 		const HBAs & HBAS() const { return hbas; }
 		const Generators & GENERATORS() const { return generators; }
 		const Metrics & METRICS() const { return metrics; }
@@ -32,7 +32,7 @@ class Controller {
 
 class Controllers: public std::set<Controller *> {
 	public:
-	       	void print(std::ostream & o, const uint64_t & current_time) const;
+	       	void print(std::ostream & o, const Time & current_time) const;
 };
 
 class Filer: public Controllers {
@@ -40,13 +40,13 @@ class Filer: public Controllers {
 		const std::string name;
 		Filer(const std::string & p_name);
 		Filer & operator=(Controller * const controller);
-		void print(std::ostream & o, const uint64_t & current_time) const;
+		void print(std::ostream & o, const Time & current_time) const;
 	       	void PrintConfig(std::ostream & o, const std::string & prefix) const;
 };
 
 class Filers: public std::set<Filer *> {
 	public:
-	       	void print(std::ostream & o, const uint64_t & current_time) const;
+	       	void print(std::ostream & o, const Time & current_time) const;
 };
 
 #endif // CONTROLLER_H

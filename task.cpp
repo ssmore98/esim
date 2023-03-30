@@ -5,14 +5,14 @@
 #include "server.h"
 #include "generator.h"
 
-Task::Task(const uint64_t & p_t, const size_t & p_size, const bool & pis_read, const bool & pis_random, Generator * const p_generator):
+Task::Task(const Time & p_t, const Bytes & p_size, const bool & pis_read, const bool & pis_random, Generator * const p_generator):
        	t(p_t), size(p_size), generator(p_generator), is_read(pis_read), is_random(pis_random) {
 }
 
 static std::string concat(std::string & a, Server * b) { return a + " " + b->name; }
 
 std::ostream & operator<<(std::ostream & o, Task * const io) {
-	o << (void *)io << " t=" << io->t << " size=" << io->size << " servers=" << 
+	o << "t=" << io->t << " size=" << io->size << " servers=" << 
 		std::accumulate(io->SERVERS().begin(), io->SERVERS().end(), std::string(""), concat)  <<
 	       	" generator=" << (io->generator ? io->generator->name : std::string("N/A"));
 	return o;

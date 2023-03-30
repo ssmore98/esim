@@ -8,6 +8,8 @@
 #include <iostream>
 #include <set>
 
+#include "metrics.h"
+
 #define MAX_EVENTS (64 * 1024)
 
 class Server;
@@ -19,9 +21,9 @@ typedef enum {EvTyNone, EvTyRateGenNextTask, EvTyServDiskEnd, EvTyIOMEnd, EvTyPo
 
 class Event {
 	public:
-		const uint64_t t;
+		const Time t;
 		const EventType type;
-		Event(const uint64_t & p_t, const EventType & p_type);
+		Event(const Time & p_t, const EventType & p_type);
 		friend bool cmp(const Event * const, const Event * const);
 		virtual Server * const GetServer() const = 0;
 		virtual Generator * const GetGenerator() const = 0;
@@ -39,7 +41,7 @@ class Events: public std::vector<Event *> {
 class GeneratorEvent: public Event {
 	public:
 		Generator * const generator;
-		GeneratorEvent(const uint64_t & t, const EventType & type, Generator * const p_generator);
+		GeneratorEvent(const Time & t, const EventType & type, Generator * const p_generator);
 		virtual Generator * const GetGenerator() const;
 		virtual Server * const GetServer() const;
 		virtual Controller * const GetController() const;
@@ -50,7 +52,7 @@ class ServerEvent: public Event {
 	public:
 		Server * const server;
 		Task   * const task;
-		ServerEvent(const uint64_t & t, const EventType & type, Server * const p_server, Task * const p_task);
+		ServerEvent(const Time & t, const EventType & type, Server * const p_server, Task * const p_task);
 		virtual Server * const GetServer() const;
 		virtual Generator * const GetGenerator() const;
 		virtual Controller * const GetController() const;
@@ -59,13 +61,15 @@ class ServerEvent: public Event {
 
 typedef std::set<ServerEvent *> ServerEvents;
 
+std::ostream & operator<<(std::ostream & o, const ServerEvents & s);
+
 bool cmp(const Event * const e1, const Event * const e2);
 
 class ControllerEvent: public Event {
 	public:
 		Controller * const controller;
 		Task   * const task;
-		ControllerEvent(const uint64_t & t, const EventType & type, Controller * const p_Controller, Task * const p_task);
+		ControllerEvent(const Time & t, const EventType & type, Controller * const p_Controller, Task * const p_task);
 		virtual Server * const GetServer() const;
 		virtual Generator * const GetGenerator() const;
 		virtual Controller * const GetController() const;
