@@ -30,7 +30,7 @@ shelf:
 generator:
         name: gen
         raid: raid
-        queue_depth: 1
+        queue_depth: 2
         # iops: 1000
         size: 65536
         percent_read: 100

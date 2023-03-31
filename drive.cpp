@@ -62,12 +62,13 @@ ServerEvents SSD_PM1733a::Submit(Task * const task, const Time & t) {
 	assert(task->SERVERS().end() != task->SERVERS().find(this));
 	assert(MAX_TASKQ > taskq.size());
 	taskq.push_back(task);
+       	metrics.QueueTask(QueueDepth(taskq.size()), Bytes(task->size));
 	if (1 == taskq.size()) {
 	       	const Time xtime = GetServiceTime(task);
 		// std::cout << __FILE__ << ':' << __LINE__ << ' ' << metrics.SVC_SUM() << std::endl;
 	       	// metrics.print(std::cout);
 		// std::cout << __FILE__ << ':' << __LINE__ << std::endl;
-		metrics.StartTask(1, xtime, task->size);
+		metrics.StartTask(t - task->t, xtime);
 		// std::cout << __FILE__ << ':' << __LINE__ << ' ' << metrics.SVC_SUM() << std::endl;
 	       	// metrics.print(std::cout);
 		// std::cout << __FILE__ << ':' << __LINE__ << std::endl;
@@ -89,18 +90,19 @@ std::pair<Task *, Event *> SSD_PM1733a::Finish(const Time & t, Task * const task
 	Task * const finished_task = taskq.front();
 	taskq.pop_front();
        	metrics.EndTask(t - finished_task->t);
+	// std::cout << this->METRICS().QD_SUM() << std::endl;
 	Event * next_event = NULL;
 	if (0 < taskq.size()) {
 	       	Task * const next_task = taskq.front();
 	       	const Time xtime = GetServiceTime(next_task);
-		metrics.StartTask(taskq.size(), xtime, next_task->size);
+		metrics.StartTask(t - next_task->t, xtime);
 	       	next_event = new ServerEvent(t + xtime, EvTyServDiskEnd, this, next_task);
 	}
 	return std::pair<Task *, Event *>(finished_task, next_event);
 }
 
 void Drives::print(std::ostream & o, const Time & current_time) const {
-	o << "Drive\t\tIOPS\tTPUT\t\tIOS\t\tBYTES\tRT\tST\tQLEN" << std::endl;
+	o << "Drive\t\tIOPS\tTPUT\t\tIOS\t\tBYTES\tRT\tST\tQLEN\tQTIME" << std::endl;
 	o << std::string(80, '=') << std::endl;
 	for (Drives::const_iterator i = begin(); i != end(); i++) {
 		o << std::setw(10) << std::left << (*i)->name;

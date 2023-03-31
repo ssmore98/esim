@@ -30,7 +30,8 @@ Filer & Filer::operator=(Controller * const controller) {
 void Controller::ScheduleTask(RAID * const raid, Task * const task, Events & events, const Time & current_time) {
 	// std::cout << __FILE__ << ':' << __LINE__ << ' '  << task << " " << events << std::endl;
        	ControllerTaskList::iterator ictl = ctl.insert(ctl.end(), ControllerTaskList::value_type(task, Tasks()));
-       	metrics.StartTask(ctl.size(), Time(), task->size);
+       	metrics.QueueTask(ctl.size(), task->size);
+       	metrics.StartTask(Time(), Time());
        	TaskList tlist = raid->Execute(task);
 	assert(tlist.size());
        	for (TaskList::iterator k = tlist.begin(); k != tlist.end(); k++) {
@@ -110,7 +111,7 @@ void Controller::print(std::ostream & o, const Time & current_time) const {
 }
 
 void Controllers::print(std::ostream & o, const Time & current_time) const {
-	o << "Controller\tIOPS\tTPUT\t\tIOS\t\tBYTES\tRT\tST\tQLEN" << std::endl;
+	o << "Controller\tIOPS\tTPUT\t\tIOS\t\tBYTES\tRT\tST\tQLEN\tQTIME" << std::endl;
 	o << std::string(80, '=') << std::endl;
 	for (Controllers::const_iterator i = begin(); i != end(); i++) {
 	       	o << (*i)->name;
@@ -158,7 +159,7 @@ void Filer::PrintConfig(std::ostream & o, const std::string & prefix) const {
 }
 
 void Filers::print(std::ostream & o, const Time & current_time) const {
-	o << "Filer\t\tIOPS\tTPUT\t\tIOS\t\tBYTES\tRT\tST\tQLEN" << std::endl;
+	o << "Filer\t\tIOPS\tTPUT\t\tIOS\t\tBYTES" << std::endl;
 	o << std::string(80, '=') << std::endl;
 	for (Filers::const_iterator i = begin(); i != end(); i++) {
 	       	(*i)->print(o, current_time);

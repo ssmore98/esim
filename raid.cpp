@@ -37,7 +37,8 @@ RAID_0::~RAID_0() {
 TaskList RAID_0::Execute(Task * const task) {
 	// std::cout << task << std::endl;
 	tasks.insert(task);
-       	metrics.StartTask(tasks.size(), Time(), task->size);
+       	metrics.QueueTask(tasks.size(), task->size);
+       	metrics.StartTask(Time(), Time());
 	TaskList retval;
        	Drives::iterator data_drive = drives.begin();
        	std::advance(data_drive, select_server_distr(generator));
@@ -73,7 +74,8 @@ Bytes RAID_1::StripeSize() const {
 
 TaskList RAID_1::Execute(Task * const task) {
 	tasks.insert(task);
-       	metrics.StartTask(tasks.size(), Time(), task->size);
+       	metrics.QueueTask(tasks.size(), task->size);
+       	metrics.StartTask(Time(), Time());
 	TaskList retval;
 	if (task->is_read) {
 		Drives::iterator i_drive = drives.begin();
@@ -127,7 +129,8 @@ RAID_5::~RAID_5() {
 TaskList RAID_5::Execute(Task * const task) {
 	if (task->is_read) return RAID_0::Execute(task);
 	tasks.insert(task);
-       	metrics.StartTask(tasks.size(), Time(), task->size);
+       	metrics.QueueTask(tasks.size(), task->size);
+       	metrics.StartTask(Time(), Time());
 	TaskList retval;
        	Drives::iterator data_drive = drives.begin();
        	std::advance(data_drive, select_server_distr(generator));
@@ -182,7 +185,8 @@ void RAID_4::print(std::ostream & o, const Time & current_time) {
 TaskList RAID_4::Execute(Task * const task) {
 	if (task->is_read) return RAID_0::Execute(task);
 	tasks.insert(task);
-       	metrics.StartTask(tasks.size(), Time(), task->size);
+       	metrics.QueueTask(tasks.size(), task->size);
+       	metrics.StartTask(Time(), Time());
 	TaskList retval;
        	Drives::iterator data_drive = drives.begin();
        	std::advance(data_drive, select_server_distr(generator));
@@ -230,7 +234,8 @@ Bytes RAID_DP::GetAccWriteSize() const {
 TaskList RAID_DP::Execute(Task * const task) {
 	// std::cout << task << std::endl;
 	if (task->is_read) return RAID_0::Execute(task);
-       	metrics.StartTask(tasks.size(), Time(), task->size);
+       	metrics.QueueTask(tasks.size(), task->size);
+       	metrics.StartTask(Time(), Time());
 	// std::cout << StripeSize() << " " << GetAccWriteSize() << std::endl;
 	// std::cout << task << " " << write_tasks;
 	assert(write_tasks.end() == write_tasks.find(task));

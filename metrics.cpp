@@ -16,17 +16,28 @@ const QueueDepth & Metrics::QD_SUM() const { return qd_sum; }
 const IOS & Metrics::N_TASKS() const { return n_tasks; }
 const Bytes & Metrics::SZ_SUM() const { return sz_sum; }
 
-void Metrics::StartTask(const QueueDepth & qd, const Time & svc, const Bytes & iosize) {
+void Metrics::QueueTask(const QueueDepth & qd, const Bytes & iosize) {
 	n_tasks++;
 	qd_sum += qd;
        	// std::cout << __FILE__ << ':' << __LINE__ << ' ' << svc_sum << std::endl;
-	svc_sum += svc;
+	// svc_sum += svc;
        	// std::cout << __FILE__ << ':' << __LINE__ << ' ' << svc_sum << std::endl;
 	sz_sum += iosize;
 }
 
-void Metrics::EndTask(const Time & xt) {
-	task_time += xt;
+void Metrics::StartTask(const Time & qwt, const Time & svc) {
+	// n_tasks++;
+	// qd_sum += qd;
+       	// std::cout << __FILE__ << ':' << __LINE__ << ' ' << svc_sum << std::endl;
+	qwt_sum += qwt;
+	svc_sum += svc;
+       	// std::cout << __FILE__ << ':' << __LINE__ << ' ' << svc_sum << std::endl;
+	// sz_sum += iosize;
+}
+
+
+void Metrics::EndTask(const Time & response_time) {
+	task_time += response_time;
 }
 
 std::ostream & operator<<(std::ostream & o, const Metrics & metrics) {
@@ -47,7 +58,9 @@ void Metrics::print(std::ostream & o) const {
 	o << '\t' << std::setiosflags(std::ios::fixed) << std::setprecision(6) <<
 		(n_tasks ? svc_sum / n_tasks: Time());
 	o << '\t' << std::setiosflags(std::ios::fixed) << std::setprecision(2) <<
-		(n_tasks ? qd_sum / n_tasks : QueueDepth());
+		(n_tasks ? qd_sum  / n_tasks : QueueDepth());
+	o << '\t' << std::setiosflags(std::ios::fixed) << std::setprecision(2) <<
+		(n_tasks ? qwt_sum / n_tasks : Time());
 	// o << '\t' << svc_sum << '\t' << n_tasks;
 }
 

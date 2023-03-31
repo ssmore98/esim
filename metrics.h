@@ -87,6 +87,7 @@ class Bytes {
 		Bytes & operator+=(const Bytes & n);
 		DataRate operator/(const Time & t) const;
 		Time operator/(const DataRate & t) const;
+		QueueDepth operator/(const IOS & ios) const;
 		bool operator<=(const Bytes & t) const;
 	       	friend std::ostream & operator<<(std::ostream & o, const Bytes & b);
 };
@@ -106,6 +107,7 @@ class Metrics {
 	       	IOS        n_tasks;
 		Time       task_time;
 		QueueDepth qd_sum;
+		Time       qwt_sum;
 		Time       svc_sum;
 		Bytes      sz_sum;
 	public:
@@ -114,9 +116,11 @@ class Metrics {
 		const Bytes & SZ_SUM() const;
 		const Time & TASK_TIME() const;
 		const Time & SVC_SUM() const;
+		const Time & QWT_SUM() const;
 		const QueueDepth & QD_SUM() const;
-	       	void StartTask(const QueueDepth & qd, const Time & svc, const Bytes & iosize);
-		void EndTask(const Time & xt);
+	       	void QueueTask(const QueueDepth & qd, const Bytes & iosize);
+	       	void StartTask(const Time & qwt, const Time & svc);
+		void EndTask(const Time & response_time);
 		friend std::ostream & operator<<(std::ostream & o, const Metrics & m);
 	       	void print(std::ostream & o) const;
 	       	void print(std::ostream & o, const Time & current_time) const;

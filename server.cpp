@@ -108,7 +108,7 @@ void IOModules::cumulative_print(std::ostream & o, const Time & current_time) co
 }
 
 void IOModules::print(std::ostream & o, const Time & current_time) const {
-	o << "IOM\t\tIOPS\tTPUT\t\tIOS\t\tBYTES\tRT\tST\tQLEN" << std::endl;
+	o << "IOM\t\tIOPS\tTPUT\t\tIOS\t\tBYTES\tRT\tST\tQLEN\tQTIME" << std::endl;
 	o << std::string(80, '=') << std::endl;
 	for (IOModules::const_iterator i = begin(); i != end(); i++) {
 	       	o << std::setw(10) << std::left  << (*i)->name;
@@ -128,13 +128,14 @@ Time IOModule::GetServiceTime(Task * const task) {
 ServerEvents IOModule::Submit(Task * const task, const Time & t) {
 	assert(task->SERVERS().end() != task->SERVERS().find(this));
 	taskq.push_back(task);
-       	metrics.StartTask(taskq.size(), GetServiceTime(task), task->size);
+       	metrics.QueueTask(taskq.size(), task->size);
 	if (1 == taskq.size()) {
 		ServerEvents retval;
 	       	// std::cout << __FILE__ << ':' << __LINE__ << ' ' << t << '+' << GetServiceTime(task) <<
 		       	// '=' << t + GetServiceTime(task) <<
 		       	// std::endl;
 	       	// std::cout << __FILE__ << ':' << __LINE__ << '(' << t + GetServiceTime(task) << ')' << std::endl;
+		metrics.StartTask(t - task->t, GetServiceTime(task));
 		const Time nt(t + GetServiceTime(task));
 	       	// std::cout << __FILE__ << ':' << __LINE__ << ' ' << nt << std::endl;
 		ServerEvent * const se = new ServerEvent(nt, EvTyIOMFinProc, this, task);
@@ -152,6 +153,7 @@ ServerEvents IOModule::Start(const Time & t) {
 	taskq.pop_front();
        	ServerEvents retval;
 	if (0 < taskq.size()) {
+		metrics.StartTask(t - taskq.front()->t, GetServiceTime(taskq.front()));
 	       	retval.insert(new ServerEvent(t + GetServiceTime(taskq.front()), EvTyIOMFinProc, this, taskq.front()));
 	}
 	for (Drives::iterator drive = shelf->DRIVES().begin(); drive != shelf->DRIVES().end(); drive++) {

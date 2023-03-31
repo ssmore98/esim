@@ -25,10 +25,11 @@ ServerEvents Port::Submit(Task * const task, const Time & t) {
 	assert(task->SERVERS().end() != task->SERVERS().find(this));
 	// std::cout << "IN " << task << std::endl;
 	taskq.push_back(task);
-       	metrics.StartTask(taskq.size(), GetServiceTime(task), task->size);
+       	metrics.QueueTask(taskq.size(), task->size);
 	if (1 == taskq.size()) {
 		ServerEvents retval;
 		// std::cout << t + GetServiceTime(task) << std::endl;
+		metrics.StartTask(t - task->t, GetServiceTime(task));
 	       	retval.insert(new ServerEvent(t + GetServiceTime(task), EvTyPortFinProc, this, task));
 		return retval;
 	}
@@ -41,6 +42,7 @@ ServerEvents Port::Start(const Time & t) {
 	taskq.pop_front();
        	ServerEvents retval;
 	if (0 < taskq.size()) {
+		metrics.StartTask(t - taskq.front()->t, GetServiceTime(taskq.front()));
 	       	retval.insert(new ServerEvent(t + GetServiceTime(taskq.front()), EvTyPortFinProc, this, taskq.front()));
 	}
 	if (finished_task->SERVERS().end() != finished_task->SERVERS().find(iom)) {
@@ -72,7 +74,7 @@ void Port::print(std::ostream & o, const Time & current_time) {
 }
 
 void Ports::print(std::ostream & o, const Time & current_time) {
-	o << "Port\t\tIOPS\tTPUT\t\tIOS\t\tBYTES\tRT\tST\tQLEN" << std::endl;
+	o << "Port\t\tIOPS\tTPUT\t\tIOS\t\tBYTES\tRT\tST\tQLEN\tQTIME" << std::endl;
 	o << std::string(80, '=') << std::endl;
 	for (Ports::const_iterator i = begin(); i != end(); i++) {
 	       	o << std::setw(10) << std::left << (*i)->name;
