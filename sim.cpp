@@ -1249,10 +1249,10 @@ int main(int argc, char **argv) {
 		(*i)->Begin(events, t);
 	}
        	// std::cout << __FILE__ << ':' << __LINE__ << ' ' << events << std::endl;
-        uint64_t i = 0;
+        // uint64_t i = 0;
 	while (t < simulation_time) {
-		i++;
-		if (i > 1000000) break;
+		// i++;
+		// if (i > 100) break;
 		if (0 == events.size()) {
 			std::cout << "Empty event heap.\n";
 			exit(0);

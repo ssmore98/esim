@@ -44,7 +44,7 @@ void Controller::ScheduleTask(RAID * const raid, Task * const task, Events & eve
 				for (Drives::const_iterator d = shelf->DRIVES().begin(); d != shelf->DRIVES().end(); d++) {
 					// std::cout << __FILE__ << ':' << __LINE__ << ' '  << '\t' << (*d)->name << std::endl;
 				       	if (drive == *d) {
-					       	// std::cout << drive << std::endl;
+					       	// std::cout << drive->name << std::endl;
 					       	for (Tasks::iterator t = k->second.begin(); t != k->second.end(); t++) {
 						       	**t = drive;
 						       	**t = (*port)->IOM();
@@ -52,6 +52,7 @@ void Controller::ScheduleTask(RAID * const raid, Task * const task, Events & eve
 						       	// std::cout << '\t' << *t << std::endl;
 							ictl->second.insert(*t);
 						       	ServerEvents sevents = (*port)->Submit(*t, current_time);
+						       	// std::cout << __FILE__ << ':' << __LINE__ << " " << sevents << std::endl;
 							for (ServerEvents::iterator sevent = sevents.begin(); sevent != sevents.end();
 								       sevent++) {
 							       	events.push_back(*sevent);
@@ -67,11 +68,13 @@ void Controller::ScheduleTask(RAID * const raid, Task * const task, Events & eve
 		}
 		assert(done);
        	}
+	// std::cout << __FILE__ << ':' << __LINE__ << ' '  << task << " " << events << std::endl;
 }
 
 void Controller::Begin(Events & events, const Time & t) {
 	for (Generators::iterator i = generators.begin(); i != generators.end(); i++) {
 		Tasks tasks = (*i)->Begin(events, t);
+	       	// std::cout << __FILE__ << ':' << __LINE__ << ' '  << tasks.size() << std::endl;
 		for (Tasks::iterator j = tasks.begin(); j != tasks.end(); j++) {
 		       	ScheduleTask((*i)->raid, *j, events, t);
 		}

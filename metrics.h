@@ -54,6 +54,7 @@ class Time {
 		Time & operator+=(const Time & n);
 		Time & operator=(const Time & n);
 		bool operator<(const Time & n) const;
+		bool operator<=(const Time & n) const;
 		bool operator>(const Time & n) const;
 		operator bool() const;
 		operator uint64_t() const;

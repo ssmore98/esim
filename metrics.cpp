@@ -53,21 +53,23 @@ std::ostream & operator<<(std::ostream & o, const Metrics & metrics) {
 
 void Metrics::print(std::ostream & o) const {
 	o << std::setw(8) << std::left << n_tasks << '\t' << std::left << sz_sum;
-	o << '\t' << std::setiosflags(std::ios::fixed) << std::setprecision(6) <<
+	o << '\t' << std::setiosflags(std::ios::fixed) << std::setprecision(2) <<
 	       	(n_tasks ? task_time / n_tasks: Time());
-	o << '\t' << std::setiosflags(std::ios::fixed) << std::setprecision(6) <<
+	o << '\t' << std::setiosflags(std::ios::fixed) << std::setprecision(2) <<
 		(n_tasks ? svc_sum / n_tasks: Time());
 	o << '\t' << std::setiosflags(std::ios::fixed) << std::setprecision(2) <<
 		(n_tasks ? qd_sum  / n_tasks : QueueDepth());
 	o << '\t' << std::setiosflags(std::ios::fixed) << std::setprecision(2) <<
 		(n_tasks ? qwt_sum / n_tasks : Time());
+       	std::resetiosflags(std::ios::fixed);
 	// o << '\t' << svc_sum << '\t' << n_tasks;
 }
 
 void Metrics::print(std::ostream & o, const Time & current_time) const {
-	o << std::left << (current_time ? n_tasks / current_time : IOPS(0));
-	o << '\t' << std::left << (current_time ? sz_sum / current_time : DataRate(0));
+	o << std::left << std::setiosflags(std::ios::fixed) << std::setprecision(2) << (current_time ? n_tasks / current_time : IOPS(0));
+	o << '\t' << std::left << std::setiosflags(std::ios::fixed) << std::setprecision(2) << (current_time ? sz_sum / current_time : DataRate(0));
 	o << "\t";
+       	std::resetiosflags(std::ios::fixed);
 	print(o);
 }
 
@@ -78,11 +80,11 @@ std::ostream & operator<<(std::ostream & o, const DataRate & d) {
 	if (d.rate < 1024) {
 	       	o << d.rate << " B/s";
 	} else if (d.rate < 1024 * 1024) {
-	       	o << (d.rate / 1024) << " KB/s";
+	       	o << (d.rate / 1024.0) << " KB/s";
 	} else if (d.rate < 1024 * 1024 * 1024) {
-	       	o << (d.rate / (1024 * 1024)) << " MB/s";
+	       	o << (d.rate / (1024.0 * 1024.0)) << " MB/s";
 	} else {
-	       	o << (d.rate / (1024 * 1024 * 1024)) << " GB/s";
+	       	o << (d.rate / (1024.0 * 1024.0 * 1024.0)) << " GB/s";
 	}
 	return o;
 }
@@ -100,11 +102,11 @@ std::ostream & operator<<(std::ostream & o, const Bytes & b) {
 	if (b.bytes < 1024) {
 	       	o << b.bytes << "B";
 	} else if (b.bytes < 1024 * 1024) {
-	       	o << (b.bytes / 1024) << "KB";
+	       	o << (b.bytes / 1024.0) << "KB";
 	} else if (b.bytes < 1024 * 1024 * 1024) {
-	       	o << (b.bytes / (1024 * 1024)) << "MB";
+	       	o << (b.bytes / (1024.0 * 1024.0)) << "MB";
 	} else {
-	       	o << (b.bytes / (1024 * 1024 * 1024)) << "GB";
+	       	o << (b.bytes / (1024.0 * 1024.0 * 1024.0)) << "GB";
 	}
 	return o;
 }

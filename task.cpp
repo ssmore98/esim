@@ -20,7 +20,7 @@ std::ostream & operator<<(std::ostream & o, Task * const io) {
 
 std::ostream & operator<<(std::ostream & o, const TaskQ & taskq) {
 	for (TaskQ::const_iterator i = taskq.begin(); i != taskq.end(); i++) {
-		o << "(" << (*i) << ") ";
+		o << "(" << (*i).first << ") ";
 	}
 	o << std::endl;
 	return o;
@@ -39,40 +39,23 @@ Task & Task::operator=(Server * const server) {
 	return *this;
 }
 
-#if 0
-
-SubTask::SubTask(const uint64_t & t, const size_t & size, const bool & is_read, const bool & is_random, Server * const server, Generator * const generator):
-       	Task(t, size, is_read, is_random, generator), mtask(NULL) {
-		this->server = server;
-       	}
-
-SubTask & SubTask::operator=(MasterTask * const p_mtask) {
-	mtask = p_mtask;
-	return *this;
+size_t TaskQ::size() const {
+	return std::deque<std::pair<Task *, Time> >::size();
 }
 
-MasterTask * SubTask::MTASK() const {
-       	return mtask;
+void TaskQ::push_back(Task * const task, const Time & t) {
+	return std::deque<std::pair<Task *, Time> >::push_back(std::pair<Task *, Time>(task, t));
 }
 
-MasterTask::MasterTask(const uint64_t & t, const size_t & size, const bool & is_read, const bool & is_random, Server * const server,
-	       	Generator * const generator, SubTasks p_tasks): Task(t, size, is_read, is_random, generator), tasks(p_tasks) {
-	for (SubTasks::iterator i = tasks.begin(); i != tasks.end(); i++) {
-		assert(!(*i)->MTASK());
-		**i = this;
-	}
-	this->server = server;
+Task * const TaskQ::pop_front() {
+	Task * const finished_task = std::deque<std::pair<Task *, Time> >::front().first;
+	std::deque<std::pair<Task *, Time> >::pop_front();
+	return finished_task;
 }
 
-size_t MasterTask::EndTask(Task * const task, const uint64_t & t) {
-	SubTasks::iterator i = std::find(tasks.begin(), tasks.end(), task);
-	if (i != tasks.end()) {
-		tasks.erase(i);
-		return tasks.size();
-	}
-	assert(0);
-	return 0;
+std::pair<Task *, Time> TaskQ::start_task(const Time & t) {
+       	// std::cout << t - front().second << std::endl;
+	return std::pair<Task *, Time>(front().first, t - front().second);
 }
-#endif
 
 #endif // TASK_CPP

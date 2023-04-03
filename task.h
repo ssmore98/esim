@@ -35,7 +35,15 @@ class Task {
 
 std::ostream & operator<<(std::ostream & o, Task * const io);
 
-typedef std::deque<Task *> TaskQ;
+class TaskQ: protected std::deque<std::pair<Task *, Time> > {
+	public:
+	       	friend std::ostream & operator<<(std::ostream & o, const TaskQ & taskq);
+		void push_back(Task * const task, const Time & t);
+		size_t size() const;
+	       	Task * const pop_front();
+		std::pair<Task *, Time> start_task(const Time & t);
+};
+
 typedef std::set<Task *> Tasks;
 
 std::ostream & operator<<(std::ostream & o, const TaskQ & taskq);

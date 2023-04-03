@@ -24,13 +24,13 @@ Port & Port::operator=(IOModule * const p_iom) {
 ServerEvents Port::Submit(Task * const task, const Time & t) {
 	assert(task->SERVERS().end() != task->SERVERS().find(this));
 	// std::cout << "IN " << task << std::endl;
-	taskq.push_back(task);
+	taskq.push_back(task, t);
        	metrics.QueueTask(taskq.size(), task->size);
 	if (1 == taskq.size()) {
 		ServerEvents retval;
-		// std::cout << t + GetServiceTime(task) << std::endl;
-		metrics.StartTask(t - task->t, GetServiceTime(task));
-	       	retval.insert(new ServerEvent(t + GetServiceTime(task), EvTyPortFinProc, this, task));
+	       	const std::pair<Task *, Time> started_task = taskq.start_task(t);
+		metrics.StartTask(started_task.second, GetServiceTime(started_task.first));
+	       	retval.insert(new ServerEvent(t + GetServiceTime(started_task.first), EvTyPortFinProc, this, started_task.first));
 		return retval;
 	}
 	return ServerEvents();
@@ -38,12 +38,12 @@ ServerEvents Port::Submit(Task * const task, const Time & t) {
 
 ServerEvents Port::Start(const Time & t) {
 	assert(0 < taskq.size());
-	Task * const finished_task = taskq.front();
-	taskq.pop_front();
+	Task * const finished_task = taskq.pop_front();
        	ServerEvents retval;
 	if (0 < taskq.size()) {
-		metrics.StartTask(t - taskq.front()->t, GetServiceTime(taskq.front()));
-	       	retval.insert(new ServerEvent(t + GetServiceTime(taskq.front()), EvTyPortFinProc, this, taskq.front()));
+	       	const std::pair<Task *, Time> started_task = taskq.start_task(t);
+		metrics.StartTask(started_task.second, GetServiceTime(started_task.first));
+	       	retval.insert(new ServerEvent(t + GetServiceTime(started_task.first), EvTyPortFinProc, this, started_task.first));
 	}
 	if (finished_task->SERVERS().end() != finished_task->SERVERS().find(iom)) {
 	       	pending_tasks.insert(finished_task);

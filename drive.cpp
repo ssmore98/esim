@@ -61,19 +61,14 @@ void SSD_PM1733a::print(std::ostream & o, const Time & current_time) {
 ServerEvents SSD_PM1733a::Submit(Task * const task, const Time & t) {
 	assert(task->SERVERS().end() != task->SERVERS().find(this));
 	assert(MAX_TASKQ > taskq.size());
-	taskq.push_back(task);
+	taskq.push_back(task, t);
        	metrics.QueueTask(QueueDepth(taskq.size()), Bytes(task->size));
 	if (1 == taskq.size()) {
-	       	const Time xtime = GetServiceTime(task);
-		// std::cout << __FILE__ << ':' << __LINE__ << ' ' << metrics.SVC_SUM() << std::endl;
-	       	// metrics.print(std::cout);
-		// std::cout << __FILE__ << ':' << __LINE__ << std::endl;
-		metrics.StartTask(t - task->t, xtime);
-		// std::cout << __FILE__ << ':' << __LINE__ << ' ' << metrics.SVC_SUM() << std::endl;
-	       	// metrics.print(std::cout);
-		// std::cout << __FILE__ << ':' << __LINE__ << std::endl;
+	       	const std::pair<Task *, Time> started_task = taskq.start_task(t);
+	       	const Time xtime = GetServiceTime(started_task.first);
+		metrics.StartTask(started_task.second, xtime);
 	       	ServerEvents retval;
-	       	retval.insert(new ServerEvent(t + xtime, EvTyServDiskEnd, this, task));
+	       	retval.insert(new ServerEvent(t + xtime, EvTyServDiskEnd, this, started_task.first));
 		return retval;
 	}
 	return ServerEvents();
@@ -87,16 +82,15 @@ ServerEvents SSD_PM1733a::Start(const Time & t) {
 std::pair<Task *, Event *> SSD_PM1733a::Finish(const Time & t, Task * const task) {
 	assert(!task);
 	assert(0 < taskq.size());
-	Task * const finished_task = taskq.front();
-	taskq.pop_front();
+	Task * const finished_task = taskq.pop_front();
        	metrics.EndTask(t - finished_task->t);
 	// std::cout << this->METRICS().QD_SUM() << std::endl;
 	Event * next_event = NULL;
 	if (0 < taskq.size()) {
-	       	Task * const next_task = taskq.front();
-	       	const Time xtime = GetServiceTime(next_task);
-		metrics.StartTask(t - next_task->t, xtime);
-	       	next_event = new ServerEvent(t + xtime, EvTyServDiskEnd, this, next_task);
+	       	const std::pair<Task *, Time> next_task = taskq.start_task(t);
+	       	const Time xtime = GetServiceTime(next_task.first);
+		metrics.StartTask(next_task.second, xtime);
+	       	next_event = new ServerEvent(t + xtime, EvTyServDiskEnd, this, next_task.first);
 	}
 	return std::pair<Task *, Event *>(finished_task, next_event);
 }

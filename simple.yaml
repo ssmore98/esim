@@ -1,23 +1,23 @@
 drives:
         name: ssd
         type: ssd_pm1733a
-        instances: 1
+        instances: 4
 raid:
         name: raid
-        type: raid_0
+        type: raid_dp
         stripe_width: 65536
         drives: 
           - ssd\d+
 ioms:
         name: iom
         max_iops: 1000000
-        mbps: 1000
+        mbps: 12000 # 100 Gbps
         instances: 1
 port:
         name: port
         iom: iom\d+
         max_iops: 1000000
-        mbps: 1000
+        mbps: 12000 # 100 Gbps
 hba:
         name: hba
         ports:
@@ -30,10 +30,10 @@ shelf:
 generator:
         name: gen
         raid: raid
-        queue_depth: 2
-        # iops: 1000
-        size: 65536
-        percent_read: 100
+        queue_depth: 1
+        # iops: 1024
+        size: 4096
+        percent_read: 0
         percent_random: 100
 controller:
         name: controller
@@ -45,4 +45,4 @@ filer:
         name: filer
         controllers: 
           - controller
-simulation_time: 1000000
+simulation_time: 10 # in seconds
